@@ -4,123 +4,128 @@ import com.atunesdelpacifico.entity.Producto;
 import com.atunesdelpacifico.model.dto.ApiResponse;
 import com.atunesdelpacifico.service.ProductoService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
-@RequestMapping("/operador/productos")
-@Tag(name = "Productos", description = "Gestión del catálogo de productos")
-@SecurityRequirement(name = "Bearer Authentication")
+@RequestMapping("/productos")
+@Tag(name = "Productos", description = "Endpoints para gestión de productos")
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class ProductoController {
-    
+
+    private static final Logger logger = LoggerFactory.getLogger(ProductoController.class);
+
     @Autowired
     private ProductoService productoService;
-    
+
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR', 'CLIENTE')")
-    @Operation(summary = "Listar todos los productos", description = "Obtiene el catálogo completo de productos")
-    public ResponseEntity<ApiResponse<List<Producto>>> getAllProductos() {
+    @Operation(summary = "Listar todos los productos", description = "Obtiene la lista de todos los productos")
+    public ResponseEntity<ApiResponse<List<Producto>>> listarProductos() {
         try {
+            logger.info("Solicitando lista de productos");
             List<Producto> productos = productoService.findAll();
+            logger.info("Se encontraron {} productos", productos.size());
             return ResponseEntity.ok(ApiResponse.success("Productos obtenidos exitosamente", productos));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            logger.error("Error al obtener productos: ", e);
+            return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al obtener productos: " + e.getMessage()));
         }
     }
-    
+
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR', 'CLIENTE')")
     @Operation(summary = "Obtener producto por ID", description = "Obtiene un producto específico por su ID")
-    public ResponseEntity<ApiResponse<Producto>> getProductoById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Producto>> obtenerProducto(@PathVariable Long id) {
         try {
-            Optional<Producto> producto = productoService.findById(id);
-            if (producto.isPresent()) {
-                return ResponseEntity.ok(ApiResponse.success("Producto encontrado", producto.get()));
-            } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.error("Producto no encontrado"));
-            }
+            logger.info("Solicitando producto con ID: {}", id);
+            Producto producto = productoService.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + id));
+            return ResponseEntity.ok(ApiResponse.success("Producto obtenido exitosamente", producto));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            logger.error("Error al obtener producto con ID {}: ", id, e);
+            return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al obtener producto: " + e.getMessage()));
         }
     }
-    
+
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
-    @Operation(summary = "Crear nuevo producto", description = "Agrega un nuevo producto al catálogo")
-    public ResponseEntity<ApiResponse<Producto>> createProducto(@Valid @RequestBody Producto producto) {
+    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
+    @Operation(summary = "Crear nuevo producto", description = "Crea un nuevo producto en el sistema")
+    public ResponseEntity<ApiResponse<Producto>> crearProducto(@Valid @RequestBody Producto producto) {
         try {
+            logger.info("Creando nuevo producto: {}", producto.getNombre());
             Producto nuevoProducto = productoService.save(producto);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success("Producto creado exitosamente", nuevoProducto));
+            return ResponseEntity.ok(ApiResponse.success("Producto creado exitosamente", nuevoProducto));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            logger.error("Error al crear producto: ", e);
+            return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al crear producto: " + e.getMessage()));
         }
     }
-    
+
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR')")
-    @Operation(summary = "Actualizar producto", description = "Actualiza los datos de un producto existente")
-    public ResponseEntity<ApiResponse<Producto>> updateProducto(@PathVariable Long id, 
-                                                              @Valid @RequestBody Producto producto) {
+    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
+    @Operation(summary = "Actualizar producto", description = "Actualiza la información de un producto")
+    public ResponseEntity<ApiResponse<Producto>> actualizarProducto(@PathVariable Long id, @Valid @RequestBody Producto producto) {
         try {
+            logger.info("Actualizando producto con ID: {}", id);
             Producto productoActualizado = productoService.update(id, producto);
             return ResponseEntity.ok(ApiResponse.success("Producto actualizado exitosamente", productoActualizado));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            logger.error("Error al actualizar producto con ID {}: ", id, e);
+            return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al actualizar producto: " + e.getMessage()));
         }
     }
-    
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @Operation(summary = "Eliminar producto", description = "Elimina un producto del catálogo")
-    public ResponseEntity<ApiResponse<String>> deleteProducto(@PathVariable Long id) {
+    @Operation(summary = "Eliminar producto", description = "Elimina un producto del sistema")
+    public ResponseEntity<ApiResponse<String>> eliminarProducto(@PathVariable Long id) {
         try {
+            logger.info("Eliminando producto con ID: {}", id);
             productoService.deleteById(id);
             return ResponseEntity.ok(ApiResponse.success("Producto eliminado exitosamente", null));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            logger.error("Error al eliminar producto con ID {}: ", id, e);
+            return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al eliminar producto: " + e.getMessage()));
         }
     }
-    
+
     @GetMapping("/conservante/{conservante}")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR', 'CLIENTE')")
-    @Operation(summary = "Obtener productos por conservante", description = "Filtra productos por tipo de conservante")
-    public ResponseEntity<ApiResponse<List<Producto>>> getProductosByConservante(@PathVariable Producto.TipoConservante conservante) {
+    @Operation(summary = "Buscar productos por conservante", description = "Obtiene productos filtrados por tipo de conservante")
+    public ResponseEntity<ApiResponse<List<Producto>>> buscarPorConservante(@PathVariable Producto.TipoConservante conservante) {
         try {
+            logger.info("Buscando productos por conservante: {}", conservante);
             List<Producto> productos = productoService.findByConservante(conservante);
-            return ResponseEntity.ok(ApiResponse.success("Productos filtrados exitosamente", productos));
+            return ResponseEntity.ok(ApiResponse.success("Productos obtenidos exitosamente", productos));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error al filtrar productos: " + e.getMessage()));
+            logger.error("Error al buscar productos por conservante {}: ", conservante, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al buscar productos: " + e.getMessage()));
         }
     }
-    
+
     @GetMapping("/buscar")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'OPERADOR', 'CLIENTE')")
-    @Operation(summary = "Buscar productos por nombre", description = "Busca productos que contengan el texto en su nombre")
-    public ResponseEntity<ApiResponse<List<Producto>>> buscarProductosPorNombre(@RequestParam String nombre) {
+    @Operation(summary = "Buscar productos por nombre", description = "Busca productos que contengan el texto especificado en el nombre")
+    public ResponseEntity<ApiResponse<List<Producto>>> buscarPorNombre(@RequestParam String nombre) {
         try {
+            logger.info("Buscando productos por nombre: {}", nombre);
             List<Producto> productos = productoService.buscarPorNombre(nombre);
-            return ResponseEntity.ok(ApiResponse.success("Búsqueda completada", productos));
+            return ResponseEntity.ok(ApiResponse.success("Productos encontrados exitosamente", productos));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error en la búsqueda: " + e.getMessage()));
+            logger.error("Error al buscar productos por nombre '{}': ", nombre, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al buscar productos: " + e.getMessage()));
         }
     }
 }

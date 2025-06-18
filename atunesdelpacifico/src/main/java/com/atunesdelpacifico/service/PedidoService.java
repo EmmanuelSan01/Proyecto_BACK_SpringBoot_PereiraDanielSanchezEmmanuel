@@ -17,44 +17,42 @@ import java.util.Optional;
 @Service
 @Transactional
 public class PedidoService {
-    
+
     @Autowired
     private PedidoRepository pedidoRepository;
-    
+
     @Autowired
     private ClienteRepository clienteRepository;
-    
+
     @Autowired
     private LoteRepository loteRepository;
-    
+
     @Autowired
     private DetallePedidoRepository detallePedidoRepository;
-    
+
     @Autowired
     private LoteService loteService;
-    
+
     public List<Pedido> findAll() {
         return pedidoRepository.findAll();
     }
-    
+
     public Optional<Pedido> findById(Long id) {
         return pedidoRepository.findById(id);
     }
-    
+
     public List<Pedido> findByCliente(Long clienteId) {
         return pedidoRepository.findByClienteIdOrderByFechaPedidoDesc(clienteId);
     }
-    
+
     public List<Pedido> findByEstado(Pedido.EstadoPedido estado) {
         return pedidoRepository.findByEstado(estado);
     }
-    
+
     public Pedido crearPedido(PedidoRequest pedidoRequest) {
-        // Verificar que el cliente existe
         Cliente cliente = clienteRepository.findById(pedidoRequest.getClienteId())
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
-        
-        // Verificar disponibilidad de todos los lotes antes de crear el pedido
+
         for (DetallePedidoRequest detalle : pedidoRequest.getDetalles()) {
             if (!loteService.verificarDisponibilidad(detalle.getLoteId(), detalle.getCantidad())) {
                 Lote lote = loteRepository.findById(detalle.getLoteId())
@@ -62,85 +60,78 @@ public class PedidoService {
                 throw new RuntimeException("Cantidad insuficiente en el lote: " + lote.getIdLote());
             }
         }
-        
-        // Crear el pedido
+
         Pedido pedido = new Pedido();
         pedido.setCliente(cliente);
         pedido.setFechaEntrega(pedidoRequest.getFechaEntrega());
-        pedido.setEstado(Pedido.EstadoPedido.PENDIENTE);
-        
+        pedido.setEstado(Pedido.EstadoPedido.Pendiente); // Corregido
+
         pedido = pedidoRepository.save(pedido);
-        
-        // Crear los detalles del pedido
+
         List<DetallePedido> detalles = new ArrayList<>();
         BigDecimal totalPedido = BigDecimal.ZERO;
-        
+
         for (DetallePedidoRequest detalleRequest : pedidoRequest.getDetalles()) {
             Lote lote = loteRepository.findById(detalleRequest.getLoteId())
                     .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
-            
+
             DetallePedido detalle = new DetallePedido();
             detalle.setPedido(pedido);
             detalle.setLote(lote);
             detalle.setCantidad(detalleRequest.getCantidad());
             detalle.setPrecioUnitario(lote.getProducto().getPrecioLista());
-            detalle.setDescuentoPorcentaje(detalleRequest.getDescuentoPorcentaje());
-            
-            // El subtotal se calcula automáticamente en el @PrePersist
+            detalle.setDescuentoPct(detalleRequest.getDescuentoPorcentaje()); // Corregido
+
             detalle = detallePedidoRepository.save(detalle);
             detalles.add(detalle);
-            
+
             totalPedido = totalPedido.add(detalle.getSubtotal());
-            
-            // Reducir la cantidad disponible en el lote
+
             loteService.reducirCantidadDisponible(lote.getIdLote(), detalle.getCantidad());
         }
-        
-        // Actualizar el total del pedido
+
         pedido.setTotal(totalPedido);
         pedido.setDetalles(detalles);
-        
+
         return pedidoRepository.save(pedido);
     }
-    
+
     public Pedido cambiarEstado(Long id, Pedido.EstadoPedido nuevoEstado) {
         Pedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-        
+
         pedido.setEstado(nuevoEstado);
         return pedidoRepository.save(pedido);
     }
-    
+
     public void cancelarPedido(Long id) {
         Pedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-        
-        if (pedido.getEstado() == Pedido.EstadoPedido.ENVIADO) {
+
+        if (pedido.getEstado() == Pedido.EstadoPedido.Enviado) { // Corregido
             throw new RuntimeException("No se puede cancelar un pedido ya enviado");
         }
-        
-        // Restaurar las cantidades en los lotes
+
         List<DetallePedido> detalles = detallePedidoRepository.findByPedido(pedido);
         for (DetallePedido detalle : detalles) {
             Lote lote = detalle.getLote();
-            lote.setCantidadDisponible(lote.getCantidadDisponible() + detalle.getCantidad());
-            
-            // Si el lote estaba vendido y ahora tiene cantidad disponible, cambiar estado
-            if (lote.getEstado() == Lote.EstadoLote.VENDIDO && lote.getCantidadDisponible() > 0) {
-                lote.setEstado(Lote.EstadoLote.DISPONIBLE);
+            lote.setCantidadDisp(lote.getCantidadDisp() + detalle.getCantidad()); // Corregido
+
+            if (lote.getEstado() == Lote.EstadoLote.VENDIDO && lote.getCantidadDisp() > 0) { // Corregido
+                lote.setEstado(Lote.EstadoLote.DISPONIBLE); // Corregido
             }
-            
+
             loteRepository.save(lote);
         }
-        
-        pedido.setEstado(Pedido.EstadoPedido.CANCELADO);
+
+        pedido.setEstado(Pedido.EstadoPedido.Cancelado); // Corregido
         pedidoRepository.save(pedido);
     }
-    
+
     public List<Pedido> findByFechaPedido(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         return pedidoRepository.findByFechaPedidoBetween(fechaInicio, fechaFin);
     }
-    
+
     public Long countByEstado(Pedido.EstadoPedido estado) {
         return pedidoRepository.countByEstado(estado);
     }

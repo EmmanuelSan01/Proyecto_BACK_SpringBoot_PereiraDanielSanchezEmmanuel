@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface RolRepository extends JpaRepository<Rol, Long> {
+public interface RolRepository extends JpaRepository<Rol, Byte> {
     Optional<Rol> findByNombre(String nombre);
     boolean existsByNombre(String nombre);
 }
