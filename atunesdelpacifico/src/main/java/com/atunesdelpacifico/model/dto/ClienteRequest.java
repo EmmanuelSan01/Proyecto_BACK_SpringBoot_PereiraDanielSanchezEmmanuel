@@ -1,12 +1,24 @@
 package com.atunesdelpacifico.model.dto;
 
 import com.atunesdelpacifico.entity.Cliente;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import jakarta.validation.Valid;
 
 public class ClienteRequest {
+
+    @NotBlank(message = "El nombre de usuario es obligatorio")
+    @Size(max = 100, message = "El nombre de usuario no puede exceder 100 caracteres")
+    private String nombreUsuario;
+
+    @NotBlank(message = "La contraseña es obligatoria")
+    @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
+    private String contrasena;
+
+    @NotBlank(message = "El correo es obligatorio")
+    @Email(message = "El correo debe tener un formato válido")
+    private String correo;
 
     @NotNull(message = "El tipo de cliente es obligatorio")
     private Cliente.TipoCliente tipo;
@@ -25,15 +37,19 @@ public class ClienteRequest {
     @Size(max = 255, message = "La dirección no puede exceder 255 caracteres")
     private String direccion;
 
-    // Usuario data
-    @Valid
-    @NotNull(message = "Los datos del usuario son obligatorios")
-    private UsuarioRequest usuario;
-
     // Constructors
     public ClienteRequest() {}
 
     // Getters and Setters
+    public String getNombreUsuario() { return nombreUsuario; }
+    public void setNombreUsuario(String nombreUsuario) { this.nombreUsuario = nombreUsuario; }
+
+    public String getContrasena() { return contrasena; }
+    public void setContrasena(String contrasena) { this.contrasena = contrasena; }
+
+    public String getCorreo() { return correo; }
+    public void setCorreo(String correo) { this.correo = correo; }
+
     public Cliente.TipoCliente getTipo() { return tipo; }
     public void setTipo(Cliente.TipoCliente tipo) { this.tipo = tipo; }
 
@@ -48,7 +64,4 @@ public class ClienteRequest {
 
     public String getDireccion() { return direccion; }
     public void setDireccion(String direccion) { this.direccion = direccion; }
-
-    public UsuarioRequest getUsuario() { return usuario; }
-    public void setUsuario(UsuarioRequest usuario) { this.usuario = usuario; }
 }

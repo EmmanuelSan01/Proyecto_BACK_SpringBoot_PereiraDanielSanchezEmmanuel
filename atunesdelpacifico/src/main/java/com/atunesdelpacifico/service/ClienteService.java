@@ -39,52 +39,57 @@ public class ClienteService {
         return clienteRepository.findById(id);
     }
 
+    public Optional<Cliente> findByUsuarioNombre(String nombreUsuario) {
+        return clienteRepository.findByUsuarioNombreUsuario(nombreUsuario);
+    }
+
     public List<Cliente> findByEstado(Cliente.EstadoCliente estado) {
         return clienteRepository.findByEstado(estado);
     }
 
-    public List<Cliente> findByTipoCliente(Cliente.TipoCliente tipoCliente) {
-        return clienteRepository.findByTipo(tipoCliente);
+    public List<Cliente> findByTipoCliente(Cliente.TipoCliente tipo) {
+        return clienteRepository.findByTipo(tipo);
+    }
+
+    public List<Cliente> buscarPorNombre(String nombre) {
+        return clienteRepository.findByNombreContainingIgnoreCase(nombre);
     }
 
     public Cliente registrarCliente(ClienteRequest clienteRequest) {
-        // Verificar que el correo no esté en uso
-        if (usuarioRepository.existsByCorreo(clienteRequest.getUsuario().getCorreo())) {
-            throw new RuntimeException("El correo electrónico ya está registrado");
+        // Verificar que no exista el usuario o correo
+        if (usuarioRepository.existsByNombreUsuario(clienteRequest.getNombreUsuario())) {
+            throw new RuntimeException("El nombre de usuario ya existe");
         }
-
-        if (usuarioRepository.existsByNombreUsuario(clienteRequest.getUsuario().getNombreUsuario())) {
-            throw new RuntimeException("El nombre de usuario ya está en uso");
+        if (usuarioRepository.existsByCorreo(clienteRequest.getCorreo())) {
+            throw new RuntimeException("El correo ya está registrado");
         }
-
-        // Verificar que la identificación no esté en uso
         if (clienteRepository.existsByIdentificacion(clienteRequest.getIdentificacion())) {
             throw new RuntimeException("La identificación ya está registrada");
         }
 
-        // Obtener el rol (por defecto Cliente = 1)
-        Rol rol = rolRepository.findById((byte) 1)
-                .orElseThrow(() -> new RuntimeException("Rol Cliente no encontrado"));
+        // Obtener rol de cliente
+        Rol rolCliente = rolRepository.findByNombre("CLIENTE")
+                .orElseThrow(() -> new RuntimeException("Rol CLIENTE no encontrado"));
 
-        // Crear el usuario
+        // Crear usuario
         Usuario usuario = new Usuario();
-        usuario.setNombreUsuario(clienteRequest.getUsuario().getNombreUsuario());
-        usuario.setContrasena(passwordEncoder.encode(clienteRequest.getUsuario().getContrasena()));
-        usuario.setCorreo(clienteRequest.getUsuario().getCorreo());
-        usuario.setRol(rol);
+        usuario.setNombreUsuario(clienteRequest.getNombreUsuario());
+        usuario.setContrasena(passwordEncoder.encode(clienteRequest.getContrasena()));
+        usuario.setCorreo(clienteRequest.getCorreo());
+        usuario.setRol(rolCliente);
+        usuario.setActivo(true);
 
         usuario = usuarioRepository.save(usuario);
 
-        // Crear el cliente
+        // Crear cliente
         Cliente cliente = new Cliente();
-        cliente.setIdUsuario(usuario.getIdUsuario());
+        cliente.setUsuario(usuario);
         cliente.setTipo(clienteRequest.getTipo());
         cliente.setNombre(clienteRequest.getNombre());
         cliente.setIdentificacion(clienteRequest.getIdentificacion());
         cliente.setTelefono(clienteRequest.getTelefono());
         cliente.setDireccion(clienteRequest.getDireccion());
         cliente.setEstado(Cliente.EstadoCliente.ACTIVO);
-        cliente.setUsuario(usuario);
 
         return clienteRepository.save(cliente);
     }
@@ -93,19 +98,26 @@ public class ClienteService {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
 
-        // Verificar duplicados (excluyendo el cliente actual)
-        if (!cliente.getIdentificacion().equals(clienteRequest.getIdentificacion()) &&
-                clienteRepository.existsByIdentificacion(clienteRequest.getIdentificacion())) {
-            throw new RuntimeException("La identificación ya está registrada");
-        }
-
         // Actualizar datos del cliente
         cliente.setTipo(clienteRequest.getTipo());
         cliente.setNombre(clienteRequest.getNombre());
-        cliente.setIdentificacion(clienteRequest.getIdentificacion());
         cliente.setTelefono(clienteRequest.getTelefono());
         cliente.setDireccion(clienteRequest.getDireccion());
 
+        // Actualizar usuario si es necesario
+        Usuario usuario = cliente.getUsuario();
+        if (!usuario.getCorreo().equals(clienteRequest.getCorreo())) {
+            if (usuarioRepository.existsByCorreo(clienteRequest.getCorreo())) {
+                throw new RuntimeException("El correo ya está registrado");
+            }
+            usuario.setCorreo(clienteRequest.getCorreo());
+        }
+
+        if (clienteRequest.getContrasena() != null && !clienteRequest.getContrasena().isEmpty()) {
+            usuario.setContrasena(passwordEncoder.encode(clienteRequest.getContrasena()));
+        }
+
+        usuarioRepository.save(usuario);
         return clienteRepository.save(cliente);
     }
 
@@ -115,23 +127,23 @@ public class ClienteService {
 
         // Cambiar estado a inactivo en lugar de eliminar
         cliente.setEstado(Cliente.EstadoCliente.INACTIVO);
+        cliente.getUsuario().setActivo(false);
+
+        usuarioRepository.save(cliente.getUsuario());
         clienteRepository.save(cliente);
     }
 
-    public Cliente cambiarEstado(Long id, Cliente.EstadoCliente nuevoEstado) {
+    public Cliente cambiarEstado(Long id, Cliente.EstadoCliente estado) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
 
-        cliente.setEstado(nuevoEstado);
+        cliente.setEstado(estado);
+
+        // Sincronizar con el estado del usuario
+        cliente.getUsuario().setActivo(estado == Cliente.EstadoCliente.ACTIVO);
+        usuarioRepository.save(cliente.getUsuario());
+
         return clienteRepository.save(cliente);
-    }
-
-    public List<Cliente> buscarPorNombre(String nombre) {
-        return clienteRepository.findByNombreContainingIgnoreCase(nombre);
-    }
-
-    public Optional<Cliente> findByUsuarioNombre(String nombreUsuario) {
-        return clienteRepository.findByUsuarioNombreUsuario(nombreUsuario);
     }
 
     public boolean isOwner(Long clienteId, String nombreUsuario) {

@@ -1,9 +1,7 @@
 package com.atunesdelpacifico.service;
 
 import com.atunesdelpacifico.entity.Lote;
-import com.atunesdelpacifico.entity.Producto;
 import com.atunesdelpacifico.repository.LoteRepository;
-import com.atunesdelpacifico.repository.ProductoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +17,6 @@ public class LoteService {
     @Autowired
     private LoteRepository loteRepository;
 
-    @Autowired
-    private ProductoRepository productoRepository;
-
     public List<Lote> findAll() {
         return loteRepository.findAll();
     }
@@ -31,18 +26,26 @@ public class LoteService {
     }
 
     public List<Lote> findDisponibles() {
-        return loteRepository.findDisponiblesOrderByFechaProduccion();
+        return loteRepository.findDisponibles();
     }
 
     public List<Lote> findByEstado(Lote.EstadoLote estado) {
         return loteRepository.findByEstado(estado);
     }
 
+    public List<Lote> findByFechaProduccion(LocalDate fechaInicio, LocalDate fechaFin) {
+        return loteRepository.findByFechaProdBetween(fechaInicio, fechaFin);
+    }
+
     public Lote save(Lote lote) {
-        if (lote.getProducto() != null && lote.getProducto().getIdProducto() != null) {
-            Producto producto = productoRepository.findById(lote.getProducto().getIdProducto())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
-            lote.setProducto(producto);
+        // Generar código de lote si no existe
+        if (lote.getCodigoLote() == null || lote.getCodigoLote().isEmpty()) {
+            lote.setCodigoLote(generarCodigoLote());
+        }
+
+        // Verificar que el código no exista
+        if (loteRepository.existsByCodigoLote(lote.getCodigoLote())) {
+            throw new RuntimeException("El código de lote ya existe");
         }
 
         return loteRepository.save(lote);
@@ -52,16 +55,12 @@ public class LoteService {
         Lote lote = loteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
 
-        lote.setFechaProd(loteActualizado.getFechaProd()); // Corregido
+        lote.setFechaProd(loteActualizado.getFechaProd());
+        lote.setFechaVenc(loteActualizado.getFechaVenc());
         lote.setCantidadTotal(loteActualizado.getCantidadTotal());
-        lote.setCantidadDisp(loteActualizado.getCantidadDisp()); // Corregido
-        lote.setEstado(loteActualizado.getEstado());
-
-        if (loteActualizado.getProducto() != null && loteActualizado.getProducto().getIdProducto() != null) {
-            Producto producto = productoRepository.findById(loteActualizado.getProducto().getIdProducto())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
-            lote.setProducto(producto);
-        }
+        lote.setCantidadDisp(loteActualizado.getCantidadDisp());
+        lote.setUbicacion(loteActualizado.getUbicacion());
+        lote.setLoteProveedor(loteActualizado.getLoteProveedor());
 
         return loteRepository.save(lote);
     }
@@ -73,40 +72,44 @@ public class LoteService {
         loteRepository.deleteById(id);
     }
 
-    public List<Lote> findByFechaProduccion(LocalDate fechaInicio, LocalDate fechaFin) {
-        return loteRepository.findByFechaProduccionBetween(fechaInicio, fechaFin);
-    }
-
-    public Lote cambiarEstado(Long id, Lote.EstadoLote nuevoEstado) {
+    public Lote cambiarEstado(Long id, Lote.EstadoLote estado) {
         Lote lote = loteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
 
-        lote.setEstado(nuevoEstado);
+        lote.setEstado(estado);
         return loteRepository.save(lote);
     }
 
-    public boolean verificarDisponibilidad(Long loteId, Integer cantidadRequerida) {
-        Lote lote = loteRepository.findById(loteId)
-                .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
-
-        return lote.getEstado() == Lote.EstadoLote.DISPONIBLE && // Corregido
-                lote.getCantidadDisp() >= cantidadRequerida; // Corregido
+    public boolean verificarDisponibilidad(Long loteId, Integer cantidad) {
+        Optional<Lote> loteOpt = loteRepository.findById(loteId);
+        if (loteOpt.isPresent()) {
+            Lote lote = loteOpt.get();
+            return lote.getEstado() == Lote.EstadoLote.DISPONIBLE &&
+                    lote.getCantidadDisp() >= cantidad;
+        }
+        return false;
     }
 
     public void reducirCantidadDisponible(Long loteId, Integer cantidad) {
         Lote lote = loteRepository.findById(loteId)
                 .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
 
-        if (lote.getCantidadDisp() < cantidad) { // Corregido
+        if (lote.getCantidadDisp() < cantidad) {
             throw new RuntimeException("Cantidad insuficiente en el lote");
         }
 
-        lote.setCantidadDisp(lote.getCantidadDisp() - cantidad); // Corregido
+        lote.setCantidadDisp(lote.getCantidadDisp() - cantidad);
 
-        if (lote.getCantidadDisp() == 0) { // Corregido
-            lote.setEstado(Lote.EstadoLote.VENDIDO); // Corregido
+        // Si se agotó el lote, cambiar estado
+        if (lote.getCantidadDisp() == 0) {
+            lote.setEstado(Lote.EstadoLote.VENDIDO);
         }
 
         loteRepository.save(lote);
+    }
+
+    private String generarCodigoLote() {
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        return "LOTE-" + timestamp.substring(timestamp.length() - 8);
     }
 }

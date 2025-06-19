@@ -43,20 +43,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.cors(withDefaults()).csrf(csrf -> csrf.disable())
-            .exceptionHandling(handling -> handling.authenticationEntryPoint(unauthorizedHandler))
-            .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers("/admin/**").hasRole("ADMINISTRADOR")
-                .requestMatchers("/operador/**").hasAnyRole("ADMINISTRADOR", "OPERADOR")
-                .requestMatchers("/cliente/**").hasAnyRole("ADMINISTRADOR", "OPERADOR", "CLIENTE")
-                .anyRequest().authenticated()
-            )
+                .exceptionHandling(handling -> handling.authenticationEntryPoint(unauthorizedHandler))
+                .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authz -> authz
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers("/operador/**").hasAnyRole("ADMINISTRADOR", "OPERADOR")
+                        .requestMatchers("/cliente/**").hasAnyRole("ADMINISTRADOR", "OPERADOR", "CLIENTE")
+                        .anyRequest().authenticated()
+                )
         ;
         http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
 }

@@ -5,14 +5,12 @@ import com.atunesdelpacifico.entity.Pedido;
 import com.atunesdelpacifico.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
-@Transactional(readOnly = true)
 public class ReporteService {
 
     @Autowired
@@ -27,30 +25,17 @@ public class ReporteService {
     @Autowired
     private LoteRepository loteRepository;
 
+    @Autowired
+    private DetallePedidoRepository detallePedidoRepository;
+
     public Map<String, Object> getReporteVentasPorProducto(LocalDate fechaInicio, LocalDate fechaFin) {
         Map<String, Object> reporte = new HashMap<>();
 
-        if (fechaInicio == null) {
-            fechaInicio = LocalDate.now().withDayOfMonth(1);
-        }
-        if (fechaFin == null) {
-            fechaFin = LocalDate.now();
-        }
-
-        if (fechaInicio.isAfter(fechaFin)) {
-            throw new IllegalArgumentException("La fecha de inicio no puede ser posterior a la fecha de fin.");
-        }
-
-        reporte.put("periodo", Map.of(
-                "fechaInicio", fechaInicio,
-                "fechaFin", fechaFin
-        ));
-
-        reporte.put("ventasPorProducto", Map.of(
-                "Atún en aceite", 1500,
-                "Atún en agua", 1200,
-                "Atún en salsa", 800
-        ));
+        // Implementar lógica de reporte de ventas por producto
+        reporte.put("titulo", "Reporte de Ventas por Producto");
+        reporte.put("fechaInicio", fechaInicio);
+        reporte.put("fechaFin", fechaFin);
+        reporte.put("datos", "Datos del reporte"); // Implementar consulta específica
 
         return reporte;
     }
@@ -58,27 +43,10 @@ public class ReporteService {
     public Map<String, Object> getReporteVentasPorCliente(LocalDate fechaInicio, LocalDate fechaFin) {
         Map<String, Object> reporte = new HashMap<>();
 
-        if (fechaInicio == null) {
-            fechaInicio = LocalDate.now().withDayOfMonth(1);
-        }
-        if (fechaFin == null) {
-            fechaFin = LocalDate.now();
-        }
-
-        if (fechaInicio.isAfter(fechaFin)) {
-            throw new IllegalArgumentException("La fecha de inicio no puede ser posterior a la fecha de fin.");
-        }
-
-        reporte.put("periodo", Map.of(
-                "fechaInicio", fechaInicio,
-                "fechaFin", fechaFin
-        ));
-
-        reporte.put("ventasPorCliente", Map.of(
-                "Cliente A", 2500.00,
-                "Cliente B", 1800.00,
-                "Cliente C", 1200.00
-        ));
+        reporte.put("titulo", "Reporte de Ventas por Cliente");
+        reporte.put("fechaInicio", fechaInicio);
+        reporte.put("fechaFin", fechaFin);
+        reporte.put("datos", "Datos del reporte"); // Implementar consulta específica
 
         return reporte;
     }
@@ -86,31 +54,10 @@ public class ReporteService {
     public Map<String, Object> getReporteProduccion(LocalDate fechaInicio, LocalDate fechaFin) {
         Map<String, Object> reporte = new HashMap<>();
 
-        if (fechaInicio == null) {
-            fechaInicio = LocalDate.now().withDayOfMonth(1);
-        }
-        if (fechaFin == null) {
-            fechaFin = LocalDate.now();
-        }
-
-        if (fechaInicio.isAfter(fechaFin)) {
-            throw new IllegalArgumentException("La fecha de inicio no puede ser posterior a la fecha de fin.");
-        }
-
-        reporte.put("periodo", Map.of(
-                "fechaInicio", fechaInicio,
-                "fechaFin", fechaFin
-        ));
-
-        long lotesDisponibles = loteRepository.findByEstado(Lote.EstadoLote.DISPONIBLE).size(); // Corregido
-        long lotesVendidos = loteRepository.findByEstado(Lote.EstadoLote.VENDIDO).size(); // Corregido
-        long lotesDefectuosos = loteRepository.findByEstado(Lote.EstadoLote.DEFECTUOSO).size(); // Corregido
-
-        reporte.put("lotesPorEstado", Map.of(
-                "disponibles", lotesDisponibles,
-                "vendidos", lotesVendidos,
-                "defectuosos", lotesDefectuosos
-        ));
+        reporte.put("titulo", "Reporte de Producción");
+        reporte.put("fechaInicio", fechaInicio);
+        reporte.put("fechaFin", fechaFin);
+        reporte.put("datos", "Datos del reporte"); // Implementar consulta específica
 
         return reporte;
     }
@@ -118,15 +65,16 @@ public class ReporteService {
     public Map<String, Object> getReporteInventario() {
         Map<String, Object> reporte = new HashMap<>();
 
-        long totalLotes = loteRepository.count();
-        long lotesDisponibles = loteRepository.findByEstado(Lote.EstadoLote.DISPONIBLE).size(); // Corregido
-        long totalProductos = productoRepository.count();
+        Long totalLotes = loteRepository.count();
+        Long lotesDisponibles = loteRepository.countByEstado(Lote.EstadoLote.DISPONIBLE);
+        Long lotesVendidos = loteRepository.countByEstado(Lote.EstadoLote.VENDIDO);
+        Long lotesDefectuosos = loteRepository.countByEstado(Lote.EstadoLote.DEFECTUOSO);
 
-        reporte.put("resumen", Map.of(
-                "totalLotes", totalLotes,
-                "lotesDisponibles", lotesDisponibles,
-                "totalProductos", totalProductos
-        ));
+        reporte.put("titulo", "Reporte de Inventario");
+        reporte.put("totalLotes", totalLotes);
+        reporte.put("lotesDisponibles", lotesDisponibles);
+        reporte.put("lotesVendidos", lotesVendidos);
+        reporte.put("lotesDefectuosos", lotesDefectuosos);
 
         return reporte;
     }
@@ -134,24 +82,18 @@ public class ReporteService {
     public Map<String, Object> getDashboardStats() {
         Map<String, Object> stats = new HashMap<>();
 
-        long totalClientes = clienteRepository.count();
-        long totalProductos = productoRepository.count();
-        long totalPedidos = pedidoRepository.count();
-        long pedidosPendientes = pedidoRepository.countByEstado(Pedido.EstadoPedido.Pendiente); // Corregido
+        // Estadísticas generales
+        Long totalClientes = clienteRepository.count();
+        Long totalProductos = productoRepository.count();
+        Long totalPedidos = pedidoRepository.count();
+        Long pedidosPendientes = pedidoRepository.countByEstado(Pedido.EstadoPedido.PENDIENTE);
+        Long pedidosEnProceso = pedidoRepository.countByEstado(Pedido.EstadoPedido.EN_PROCESO);
 
-        stats.put("totales", Map.of(
-                "clientes", totalClientes,
-                "productos", totalProductos,
-                "pedidos", totalPedidos,
-                "pedidosPendientes", pedidosPendientes
-        ));
-
-        stats.put("pedidosPorEstado", Map.of(
-                "pendientes", pedidoRepository.countByEstado(Pedido.EstadoPedido.Pendiente), // Corregido
-                "enProceso", pedidoRepository.countByEstado(Pedido.EstadoPedido.En_Proceso), // Corregido
-                "enviados", pedidoRepository.countByEstado(Pedido.EstadoPedido.Enviado), // Corregido
-                "cancelados", pedidoRepository.countByEstado(Pedido.EstadoPedido.Cancelado) // Corregido
-        ));
+        stats.put("totalClientes", totalClientes);
+        stats.put("totalProductos", totalProductos);
+        stats.put("totalPedidos", totalPedidos);
+        stats.put("pedidosPendientes", pedidosPendientes);
+        stats.put("pedidosEnProceso", pedidosEnProceso);
 
         return stats;
     }

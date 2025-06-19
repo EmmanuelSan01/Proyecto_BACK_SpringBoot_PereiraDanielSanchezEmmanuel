@@ -20,13 +20,13 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Autenticación", description = "Endpoints para autenticación de usuarios")
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class AuthController {
-    
+
     @Autowired
     private AuthenticationManager authenticationManager;
-    
+
     @Autowired
     private JwtTokenProvider tokenProvider;
-    
+
     @PostMapping("/login")
     @Operation(summary = "Iniciar sesión", description = "Autentica un usuario y devuelve un token JWT")
     public ResponseEntity<ApiResponse<JwtResponse>> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -37,28 +37,28 @@ public class AuthController {
                             loginRequest.getContrasena()
                     )
             );
-            
+
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            
+
             String jwt = tokenProvider.generateToken(authentication);
-            
+
             // Obtener información del usuario autenticado
-            org.springframework.security.core.userdetails.UserDetails userDetails = 
+            org.springframework.security.core.userdetails.UserDetails userDetails =
                     (org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal();
-            
+
             // Extraer el rol del usuario
             String rol = userDetails.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
-            
+
             JwtResponse jwtResponse = new JwtResponse(jwt, userDetails.getUsername(), "", rol);
-            
+
             return ResponseEntity.ok(ApiResponse.success("Login exitoso", jwtResponse));
-            
+
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Credenciales inválidas: " + e.getMessage()));
         }
     }
-    
+
     @PostMapping("/logout")
     @Operation(summary = "Cerrar sesión", description = "Cierra la sesión del usuario actual")
     public ResponseEntity<ApiResponse<String>> logout() {
