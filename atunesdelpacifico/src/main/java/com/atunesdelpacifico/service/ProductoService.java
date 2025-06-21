@@ -16,6 +16,24 @@ public class ProductoService {
     @Autowired
     private ProductoRepository productoRepository;
 
+    // Métodos SIN lotes para evitar referencias circulares
+    public List<Producto> findAllWithoutLotes() {
+        return productoRepository.findAllWithoutLotes();
+    }
+
+    public Optional<Producto> findByIdWithoutLotes(Long id) {
+        return productoRepository.findByIdWithoutLotes(id);
+    }
+
+    public List<Producto> findByConservanteWithoutLotes(Producto.TipoConservante conservante) {
+        return productoRepository.findByConservanteWithoutLotes(conservante);
+    }
+
+    public List<Producto> buscarPorNombreWithoutLotes(String nombre) {
+        return productoRepository.findByNombreContainingIgnoreCaseWithoutLotes(nombre);
+    }
+
+    // Métodos originales (mantener para compatibilidad)
     public List<Producto> findAll() {
         return productoRepository.findAll();
     }
@@ -33,41 +51,22 @@ public class ProductoService {
     }
 
     public Producto save(Producto producto) {
-        // Verificar que el código SKU no exista
-        if (productoRepository.existsByCodigoSku(producto.getCodigoSku())) {
-            throw new RuntimeException("El código SKU ya existe");
-        }
-
         return productoRepository.save(producto);
     }
 
-    public Producto update(Long id, Producto productoActualizado) {
-        Producto producto = productoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
-
-        // Verificar código SKU si cambió
-        if (!producto.getCodigoSku().equals(productoActualizado.getCodigoSku())) {
-            if (productoRepository.existsByCodigoSku(productoActualizado.getCodigoSku())) {
-                throw new RuntimeException("El código SKU ya existe");
-            }
+    public Producto update(Long id, Producto producto) {
+        if (productoRepository.existsById(id)) {
+            producto.setIdProducto(id);
+            return productoRepository.save(producto);
         }
-
-        producto.setCodigoSku(productoActualizado.getCodigoSku());
-        producto.setNombre(productoActualizado.getNombre());
-        producto.setDescripcion(productoActualizado.getDescripcion());
-        producto.setConservante(productoActualizado.getConservante());
-        producto.setContenidoG(productoActualizado.getContenidoG());
-        producto.setPrecioLista(productoActualizado.getPrecioLista());
-        producto.setPrecioCosto(productoActualizado.getPrecioCosto());
-        producto.setStockMinimo(productoActualizado.getStockMinimo());
-
-        return productoRepository.save(producto);
+        throw new RuntimeException("Producto no encontrado con ID: " + id);
     }
 
     public void deleteById(Long id) {
-        if (!productoRepository.existsById(id)) {
-            throw new RuntimeException("Producto no encontrado");
+        if (productoRepository.existsById(id)) {
+            productoRepository.deleteById(id);
+        } else {
+            throw new RuntimeException("Producto no encontrado con ID: " + id);
         }
-        productoRepository.deleteById(id);
     }
 }

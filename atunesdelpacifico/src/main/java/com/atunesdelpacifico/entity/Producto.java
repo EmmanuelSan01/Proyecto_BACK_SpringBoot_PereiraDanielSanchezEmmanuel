@@ -1,10 +1,8 @@
 package com.atunesdelpacifico.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,7 +18,7 @@ public class Producto {
 
     @NotBlank(message = "El código SKU es obligatorio")
     @Size(max = 50, message = "El código SKU no puede exceder 50 caracteres")
-    @Column(name = "codigo_sku", nullable = false, unique = true)
+    @Column(name = "codigo_sku", unique = true, nullable = false)
     private String codigoSku;
 
     @NotBlank(message = "El nombre es obligatorio")
@@ -36,11 +34,11 @@ public class Producto {
     @Column(name = "conservante", nullable = false)
     private TipoConservante conservante;
 
-    @Min(value = 1, message = "El contenido debe ser mayor a 0")
+    @Positive(message = "El contenido debe ser mayor a 0")
     @Column(name = "contenido_g", nullable = false)
     private Integer contenidoG;
 
-    @DecimalMin(value = "0.01", message = "El precio debe ser mayor a 0")
+    @DecimalMin(value = "0.01", message = "El precio de lista debe ser mayor a 0")
     @Column(name = "precio_lista", nullable = false, precision = 10, scale = 2)
     private BigDecimal precioLista;
 
@@ -58,8 +56,14 @@ public class Producto {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    // IMPORTANTE: Usar @JsonManagedReference para evitar ciclos infinitos
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference
     private List<Lote> lotes;
+
+    public enum TipoConservante {
+        ACEITE, AGUA, SALSA
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -72,36 +76,23 @@ public class Producto {
         updatedAt = LocalDateTime.now();
     }
 
-    // Enum que coincide con la base de datos
-    public enum TipoConservante {
-        ACEITE("Aceite"),
-        AGUA("Agua"),
-        SALSA("Salsa");
-
-        private final String displayName;
-
-        TipoConservante(String displayName) {
-            this.displayName = displayName;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-    }
-
-    // Constructors
+    // Constructores
     public Producto() {}
 
-    public Producto(String codigoSku, String nombre, String descripcion, TipoConservante conservante, Integer contenidoG, BigDecimal precioLista) {
+    public Producto(String codigoSku, String nombre, String descripcion,
+                    TipoConservante conservante, Integer contenidoG,
+                    BigDecimal precioLista, BigDecimal precioCosto, Integer stockMinimo) {
         this.codigoSku = codigoSku;
         this.nombre = nombre;
         this.descripcion = descripcion;
         this.conservante = conservante;
         this.contenidoG = contenidoG;
         this.precioLista = precioLista;
+        this.precioCosto = precioCosto;
+        this.stockMinimo = stockMinimo;
     }
 
-    // Getters and Setters
+    // Getters y Setters
     public Long getIdProducto() { return idProducto; }
     public void setIdProducto(Long idProducto) { this.idProducto = idProducto; }
 

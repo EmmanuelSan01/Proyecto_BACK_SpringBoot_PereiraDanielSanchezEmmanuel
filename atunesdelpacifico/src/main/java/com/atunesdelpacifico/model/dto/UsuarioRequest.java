@@ -20,7 +20,7 @@ public class UsuarioRequest {
     private String correo;
 
     @NotNull(message = "El ID del rol es obligatorio")
-    private Byte rolId;
+    private Long rolId;
 
     private Boolean activo = true;
 
@@ -37,8 +37,8 @@ public class UsuarioRequest {
     public String getCorreo() { return correo; }
     public void setCorreo(String correo) { this.correo = correo; }
 
-    public Byte getRolId() { return rolId; }
-    public void setRolId(Byte rolId) { this.rolId = rolId; }
+    public Long getRolId() { return rolId; }
+    public void setRolId(Long rolId) { this.rolId = rolId; }
 
     public Boolean getActivo() { return activo; }
     public void setActivo(Boolean activo) { this.activo = activo; }

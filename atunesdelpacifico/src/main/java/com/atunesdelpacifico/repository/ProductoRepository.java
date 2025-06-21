@@ -12,18 +12,21 @@ import java.util.Optional;
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
-    List<Producto> findByConservante(Producto.TipoConservante conservante);
+    // Consultas SIN lotes para evitar referencias circulares
+    @Query("SELECT p FROM Producto p")
+    List<Producto> findAllWithoutLotes();
 
-    Optional<Producto> findByCodigoSku(String codigoSku);
+    @Query("SELECT p FROM Producto p WHERE p.idProducto = :id")
+    Optional<Producto> findByIdWithoutLotes(@Param("id") Long id);
+
+    @Query("SELECT p FROM Producto p WHERE p.conservante = :conservante")
+    List<Producto> findByConservanteWithoutLotes(@Param("conservante") Producto.TipoConservante conservante);
 
     @Query("SELECT p FROM Producto p WHERE LOWER(p.nombre) LIKE LOWER(CONCAT('%', :nombre, '%'))")
-    List<Producto> findByNombreContainingIgnoreCase(@Param("nombre") String nombre);
+    List<Producto> findByNombreContainingIgnoreCaseWithoutLotes(@Param("nombre") String nombre);
 
-    @Query("SELECT p FROM Producto p WHERE LOWER(p.nombre) LIKE LOWER(CONCAT('%', :texto, '%')) OR LOWER(p.descripcion) LIKE LOWER(CONCAT('%', :texto, '%'))")
-    List<Producto> findByNombreOrDescripcionContainingIgnoreCase(@Param("texto") String texto);
-
-    Boolean existsByCodigoSku(String codigoSku);
-
-    @Query("SELECT COUNT(p) FROM Producto p")
-    Long countTotalProductos();
+    // Consultas originales (mantener para compatibilidad)
+    List<Producto> findByConservante(Producto.TipoConservante conservante);
+    List<Producto> findByNombreContainingIgnoreCase(String nombre);
+    Optional<Producto> findByCodigoSku(String codigoSku);
 }

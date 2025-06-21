@@ -16,24 +16,26 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/productos")
+@RequestMapping("/productos")
 @Tag(name = "Productos", description = "Gestión de productos")
-@SecurityRequirement(name = "bearerAuth")
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class ProductoController {
 
     @Autowired
     private ProductoService productoService;
 
+    // ENDPOINTS PÚBLICOS (sin autenticación requerida)
     @GetMapping
-    @Operation(summary = "Listar todos los productos", description = "Obtiene la lista completa de productos")
+    @Operation(summary = "Listar todos los productos", description = "Obtiene la lista completa de productos SIN lotes para evitar referencias circulares")
     public ResponseEntity<ApiResponse<List<Producto>>> getAllProductos() {
         try {
-            List<Producto> productos = productoService.findAll();
-            return ResponseEntity.ok(ApiResponse.success("Productos obtenidos exitosamente", productos));
+            // Obtener productos sin lotes para evitar referencias circulares
+            List<Producto> productos = productoService.findAllWithoutLotes();
+            ApiResponse<List<Producto>> response = ApiResponse.success("Productos obtenidos exitosamente", productos);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener productos: " + e.getMessage()));
+            ApiResponse<List<Producto>> errorResponse = ApiResponse.error("Error al obtener productos: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -41,54 +43,17 @@ public class ProductoController {
     @Operation(summary = "Obtener producto por ID", description = "Obtiene un producto específico por su ID")
     public ResponseEntity<ApiResponse<Producto>> getProductoById(@PathVariable Long id) {
         try {
-            Optional<Producto> producto = productoService.findById(id);
+            Optional<Producto> producto = productoService.findByIdWithoutLotes(id);
             if (producto.isPresent()) {
-                return ResponseEntity.ok(ApiResponse.success("Producto encontrado", producto.get()));
+                ApiResponse<Producto> response = ApiResponse.success("Producto encontrado", producto.get());
+                return ResponseEntity.ok(response);
             } else {
+                ApiResponse<Producto> response = ApiResponse.error("Producto no encontrado");
                 return ResponseEntity.notFound().build();
             }
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener producto: " + e.getMessage()));
-        }
-    }
-
-    @PostMapping
-    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
-    @Operation(summary = "Crear nuevo producto", description = "Crea un nuevo producto en el catálogo")
-    public ResponseEntity<ApiResponse<Producto>> createProducto(@Valid @RequestBody Producto producto) {
-        try {
-            Producto nuevoProducto = productoService.save(producto);
-            return ResponseEntity.ok(ApiResponse.success("Producto creado exitosamente", nuevoProducto));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al crear producto: " + e.getMessage()));
-        }
-    }
-
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
-    @Operation(summary = "Actualizar producto", description = "Actualiza los datos de un producto existente")
-    public ResponseEntity<ApiResponse<Producto>> updateProducto(@PathVariable Long id, @Valid @RequestBody Producto producto) {
-        try {
-            Producto productoActualizado = productoService.update(id, producto);
-            return ResponseEntity.ok(ApiResponse.success("Producto actualizado exitosamente", productoActualizado));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al actualizar producto: " + e.getMessage()));
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @Operation(summary = "Eliminar producto", description = "Elimina un producto del catálogo")
-    public ResponseEntity<ApiResponse<String>> deleteProducto(@PathVariable Long id) {
-        try {
-            productoService.deleteById(id);
-            return ResponseEntity.ok(ApiResponse.success("Producto eliminado exitosamente", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al eliminar producto: " + e.getMessage()));
+            ApiResponse<Producto> errorResponse = ApiResponse.error("Error al obtener producto: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -96,11 +61,12 @@ public class ProductoController {
     @Operation(summary = "Buscar productos por conservante", description = "Obtiene productos filtrados por tipo de conservante")
     public ResponseEntity<ApiResponse<List<Producto>>> getProductosByConservante(@PathVariable Producto.TipoConservante conservante) {
         try {
-            List<Producto> productos = productoService.findByConservante(conservante);
-            return ResponseEntity.ok(ApiResponse.success("Productos obtenidos exitosamente", productos));
+            List<Producto> productos = productoService.findByConservanteWithoutLotes(conservante);
+            ApiResponse<List<Producto>> response = ApiResponse.success("Productos obtenidos exitosamente", productos);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener productos: " + e.getMessage()));
+            ApiResponse<List<Producto>> errorResponse = ApiResponse.error("Error al obtener productos: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -108,11 +74,58 @@ public class ProductoController {
     @Operation(summary = "Buscar productos por nombre", description = "Busca productos que contengan el texto en su nombre")
     public ResponseEntity<ApiResponse<List<Producto>>> buscarProductosPorNombre(@RequestParam String nombre) {
         try {
-            List<Producto> productos = productoService.buscarPorNombre(nombre);
-            return ResponseEntity.ok(ApiResponse.success("Búsqueda completada", productos));
+            List<Producto> productos = productoService.buscarPorNombreWithoutLotes(nombre);
+            ApiResponse<List<Producto>> response = ApiResponse.success("Búsqueda completada", productos);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error en la búsqueda: " + e.getMessage()));
+            ApiResponse<List<Producto>> errorResponse = ApiResponse.error("Error en la búsqueda: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    // ENDPOINTS QUE REQUIEREN AUTENTICACIÓN
+    @PostMapping
+    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Crear nuevo producto", description = "Crea un nuevo producto en el catálogo")
+    public ResponseEntity<ApiResponse<Producto>> createProducto(@Valid @RequestBody Producto producto) {
+        try {
+            Producto nuevoProducto = productoService.save(producto);
+            ApiResponse<Producto> response = ApiResponse.success("Producto creado exitosamente", nuevoProducto);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            ApiResponse<Producto> errorResponse = ApiResponse.error("Error al crear producto: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Actualizar producto", description = "Actualiza los datos de un producto existente")
+    public ResponseEntity<ApiResponse<Producto>> updateProducto(@PathVariable Long id, @Valid @RequestBody Producto producto) {
+        try {
+            Producto productoActualizado = productoService.update(id, producto);
+            ApiResponse<Producto> response = ApiResponse.success("Producto actualizado exitosamente", productoActualizado);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            ApiResponse<Producto> errorResponse = ApiResponse.error("Error al actualizar producto: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Eliminar producto", description = "Elimina un producto del catálogo")
+    public ResponseEntity<ApiResponse<String>> deleteProducto(@PathVariable Long id) {
+        try {
+            productoService.deleteById(id);
+            ApiResponse<String> response = ApiResponse.success("Producto eliminado exitosamente", null);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            ApiResponse<String> errorResponse = ApiResponse.error("Error al eliminar producto: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 }

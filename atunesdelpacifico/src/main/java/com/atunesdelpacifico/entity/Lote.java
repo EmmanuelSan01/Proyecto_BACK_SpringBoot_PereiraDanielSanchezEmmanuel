@@ -1,12 +1,10 @@
 package com.atunesdelpacifico.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "lote")
@@ -19,16 +17,20 @@ public class Lote {
 
     @NotBlank(message = "El código de lote es obligatorio")
     @Size(max = 50, message = "El código de lote no puede exceder 50 caracteres")
-    @Column(name = "codigo_lote", nullable = false, unique = true)
+    @Column(name = "codigo_lote", unique = true, nullable = false)
     private String codigoLote;
 
+    // IMPORTANTE: Usar @JsonBackReference para evitar ciclos infinitos
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producto_id", nullable = false)
+    @JsonBackReference
     private Producto producto;
 
+    @NotNull(message = "La fecha de producción es obligatoria")
     @Column(name = "fecha_prod", nullable = false)
     private LocalDate fechaProd;
 
+    @NotNull(message = "La fecha de vencimiento es obligatoria")
     @Column(name = "fecha_venc", nullable = false)
     private LocalDate fechaVenc;
 
@@ -48,7 +50,7 @@ public class Lote {
     @Column(name = "ubicacion")
     private String ubicacion;
 
-    @Size(max = 100, message = "El lote del proveedor no puede exceder 100 caracteres")
+    @Size(max = 100, message = "El lote proveedor no puede exceder 100 caracteres")
     @Column(name = "lote_proveedor")
     private String loteProveedor;
 
@@ -58,8 +60,9 @@ public class Lote {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "lote", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<DetallePedido> detallesPedido;
+    public enum EstadoLote {
+        DISPONIBLE, VENDIDO, DEFECTUOSO, VENCIDO
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -72,37 +75,22 @@ public class Lote {
         updatedAt = LocalDateTime.now();
     }
 
-    // Enum que coincide exactamente con la base de datos
-    public enum EstadoLote {
-        DISPONIBLE("Disponible"),
-        VENDIDO("Vendido"),
-        DEFECTUOSO("Defectuoso"),
-        VENCIDO("Vencido");
-
-        private final String displayName;
-
-        EstadoLote(String displayName) {
-            this.displayName = displayName;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-    }
-
-    // Constructors
+    // Constructores
     public Lote() {}
 
-    public Lote(String codigoLote, Producto producto, LocalDate fechaProd, LocalDate fechaVenc, Integer cantidadTotal, Integer cantidadDisp) {
+    public Lote(String codigoLote, Producto producto, LocalDate fechaProd,
+                LocalDate fechaVenc, Integer cantidadTotal, Integer cantidadDisp,
+                String ubicacion) {
         this.codigoLote = codigoLote;
         this.producto = producto;
         this.fechaProd = fechaProd;
         this.fechaVenc = fechaVenc;
         this.cantidadTotal = cantidadTotal;
         this.cantidadDisp = cantidadDisp;
+        this.ubicacion = ubicacion;
     }
 
-    // Getters and Setters
+    // Getters y Setters
     public Long getIdLote() { return idLote; }
     public void setIdLote(Long idLote) { this.idLote = idLote; }
 
@@ -138,7 +126,4 @@ public class Lote {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-
-    public List<DetallePedido> getDetallesPedido() { return detallesPedido; }
-    public void setDetallesPedido(List<DetallePedido> detallesPedido) { this.detallesPedido = detallesPedido; }
 }

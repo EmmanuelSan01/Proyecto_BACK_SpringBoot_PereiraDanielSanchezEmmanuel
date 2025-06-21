@@ -34,6 +34,14 @@ public class UsuarioService {
         return usuarioRepository.findById(id);
     }
 
+    public Optional<Usuario> findByNombreUsuario(String nombreUsuario) {
+        return usuarioRepository.findByNombreUsuario(nombreUsuario);
+    }
+
+    public Optional<Usuario> findByCorreo(String correo) {
+        return usuarioRepository.findByCorreo(correo);
+    }
+
     public List<Usuario> findByRol(String rolNombre) {
         return usuarioRepository.findByRolNombre(rolNombre);
     }
@@ -47,9 +55,8 @@ public class UsuarioService {
             throw new RuntimeException("El correo ya está registrado");
         }
 
-        // Obtener el rol - convertir Byte a Long
-        Long rolId = usuarioRequest.getRolId().longValue();
-        Rol rol = rolRepository.findById(rolId)
+        // Obtener el rol
+        Rol rol = rolRepository.findById(usuarioRequest.getRolId())
                 .orElseThrow(() -> new RuntimeException("Rol no encontrado"));
 
         Usuario usuario = new Usuario();
@@ -57,7 +64,7 @@ public class UsuarioService {
         usuario.setContrasena(passwordEncoder.encode(usuarioRequest.getContrasena()));
         usuario.setCorreo(usuarioRequest.getCorreo());
         usuario.setRol(rol);
-        usuario.setActivo(usuarioRequest.getActivo());
+        usuario.setActivo(usuarioRequest.getActivo() != null ? usuarioRequest.getActivo() : true);
 
         return usuarioRepository.save(usuario);
     }
@@ -87,12 +94,11 @@ public class UsuarioService {
             usuario.setContrasena(passwordEncoder.encode(usuarioRequest.getContrasena()));
         }
 
-        // Actualizar rol - convertir Byte a Long
-        Long rolId = usuarioRequest.getRolId().longValue();
-        Rol rol = rolRepository.findById(rolId)
+        // Actualizar rol
+        Rol rol = rolRepository.findById(usuarioRequest.getRolId())
                 .orElseThrow(() -> new RuntimeException("Rol no encontrado"));
         usuario.setRol(rol);
-        usuario.setActivo(usuarioRequest.getActivo());
+        usuario.setActivo(usuarioRequest.getActivo() != null ? usuarioRequest.getActivo() : true);
 
         return usuarioRepository.save(usuario);
     }
@@ -104,5 +110,13 @@ public class UsuarioService {
         // Cambiar estado a inactivo en lugar de eliminar
         usuario.setActivo(false);
         usuarioRepository.save(usuario);
+    }
+
+    public boolean existsByNombreUsuario(String nombreUsuario) {
+        return usuarioRepository.existsByNombreUsuario(nombreUsuario);
+    }
+
+    public boolean existsByCorreo(String correo) {
+        return usuarioRepository.existsByCorreo(correo);
     }
 }

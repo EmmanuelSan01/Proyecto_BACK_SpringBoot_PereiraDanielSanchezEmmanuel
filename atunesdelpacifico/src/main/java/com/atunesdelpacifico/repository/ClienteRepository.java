@@ -28,4 +28,7 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     @Query("SELECT COUNT(c) FROM Cliente c WHERE c.estado = :estado")
     Long countByEstado(@Param("estado") Cliente.EstadoCliente estado);
+
+    @Query("SELECT c FROM Cliente c JOIN FETCH c.usuario WHERE c.id = :id")
+    Optional<Cliente> findByIdWithUsuario(@Param("id") Long id);
 }
