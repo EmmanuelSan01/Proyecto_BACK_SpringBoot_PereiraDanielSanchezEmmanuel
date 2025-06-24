@@ -7,17 +7,26 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
-    List<Producto> findByConservante(Producto.TipoConservante conservante);
+    // Consultas SIN lotes para evitar referencias circulares
+    @Query("SELECT p FROM Producto p")
+    List<Producto> findAllWithoutLotes();
 
-    @Query("SELECT p FROM Producto p ORDER BY p.nombre ASC")
-    List<Producto> findAllOrderByNombre();
+    @Query("SELECT p FROM Producto p WHERE p.idProducto = :id")
+    Optional<Producto> findByIdWithoutLotes(@Param("id") Long id);
+
+    @Query("SELECT p FROM Producto p WHERE p.conservante = :conservante")
+    List<Producto> findByConservanteWithoutLotes(@Param("conservante") Producto.TipoConservante conservante);
 
     @Query("SELECT p FROM Producto p WHERE LOWER(p.nombre) LIKE LOWER(CONCAT('%', :nombre, '%'))")
-    List<Producto> findByNombreContainingIgnoreCase(@Param("nombre") String nombre);
+    List<Producto> findByNombreContainingIgnoreCaseWithoutLotes(@Param("nombre") String nombre);
 
-    boolean existsByNombre(String nombre);
+    // Consultas originales (mantener para compatibilidad)
+    List<Producto> findByConservante(Producto.TipoConservante conservante);
+    List<Producto> findByNombreContainingIgnoreCase(String nombre);
+    Optional<Producto> findByCodigoSku(String codigoSku);
 }

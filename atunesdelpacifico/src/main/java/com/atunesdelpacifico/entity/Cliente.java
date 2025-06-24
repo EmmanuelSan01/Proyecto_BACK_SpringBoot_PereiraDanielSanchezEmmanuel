@@ -13,7 +13,13 @@ public class Cliente {
 
     @Id
     @Column(name = "id_usuario")
-    private Long idUsuario;
+    private Long id;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId
+    @JoinColumn(name = "id_usuario")
+    @JsonIgnore
+    private Usuario usuario;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false)
@@ -41,48 +47,37 @@ public class Cliente {
     @Column(name = "estado", nullable = false)
     private EstadoCliente estado = EstadoCliente.ACTIVO;
 
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "id_usuario")
-    @JsonIgnore
-    private Usuario usuario;
 
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Pedido> pedidos;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
 
-    @PrePersist
-    protected void onCreate() {
-        updatedAt = LocalDateTime.now();
-    }
-
     // Enums que coinciden con la base de datos
     public enum TipoCliente {
-        PERSONA_NATURAL("Persona Natural"),
-        EMPRESA("Empresa");
-
-        private final String displayName;
-
-        TipoCliente(String displayName) {
-            this.displayName = displayName;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
+        PERSONA_NATURAL,
+        EMPRESA
     }
 
     public enum EstadoCliente {
         ACTIVO("Activo"),
-        INACTIVO("Inactivo");
+        INACTIVO("Inactivo"),
+        SUSPENDIDO("Suspendido");
 
         private final String displayName;
 
@@ -108,33 +103,91 @@ public class Cliente {
     }
 
     // Getters and Setters
-    public Long getIdUsuario() { return idUsuario; }
-    public void setIdUsuario(Long idUsuario) { this.idUsuario = idUsuario; }
+    public Long getId() {
+        return id;
+    }
 
-    public TipoCliente getTipo() { return tipo; }
-    public void setTipo(TipoCliente tipo) { this.tipo = tipo; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
+    public Usuario getUsuario() {
+        return usuario;
+    }
 
-    public String getIdentificacion() { return identificacion; }
-    public void setIdentificacion(String identificacion) { this.identificacion = identificacion; }
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
+    }
 
-    public String getTelefono() { return telefono; }
-    public void setTelefono(String telefono) { this.telefono = telefono; }
+    public TipoCliente getTipo() {
+        return tipo;
+    }
 
-    public String getDireccion() { return direccion; }
-    public void setDireccion(String direccion) { this.direccion = direccion; }
+    public void setTipo(TipoCliente tipo) {
+        this.tipo = tipo;
+    }
 
-    public EstadoCliente getEstado() { return estado; }
-    public void setEstado(EstadoCliente estado) { this.estado = estado; }
+    public String getNombre() {
+        return nombre;
+    }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
 
-    public Usuario getUsuario() { return usuario; }
-    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
+    public String getIdentificacion() {
+        return identificacion;
+    }
 
-    public List<Pedido> getPedidos() { return pedidos; }
-    public void setPedidos(List<Pedido> pedidos) { this.pedidos = pedidos; }
+    public void setIdentificacion(String identificacion) {
+        this.identificacion = identificacion;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
+    }
+
+    public String getDireccion() {
+        return direccion;
+    }
+
+    public void setDireccion(String direccion) {
+        this.direccion = direccion;
+    }
+
+    public EstadoCliente getEstado() {
+        return estado;
+    }
+
+    public void setEstado(EstadoCliente estado) {
+        this.estado = estado;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public List<Pedido> getPedidos() {
+        return pedidos;
+    }
+
+    public void setPedidos(List<Pedido> pedidos) {
+        this.pedidos = pedidos;
+    }
 }

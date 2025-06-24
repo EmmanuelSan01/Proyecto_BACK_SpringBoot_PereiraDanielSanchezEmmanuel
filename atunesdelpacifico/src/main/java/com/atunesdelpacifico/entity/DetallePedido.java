@@ -34,8 +34,12 @@ public class DetallePedido {
 
     @Min(value = 0, message = "El descuento no puede ser negativo")
     @Max(value = 100, message = "El descuento no puede ser mayor a 100%")
-    @Column(name = "descuento_pct", nullable = false)
-    private Byte descuentoPct = 0;
+    @Column(name = "descuento_pct", nullable = false, precision = 5, scale = 2)
+    private BigDecimal descuentoPct = BigDecimal.ZERO;
+
+    @DecimalMin(value = "0.00", message = "El descuento en valor no puede ser negativo")
+    @Column(name = "descuento_valor", nullable = false, precision = 10, scale = 2)
+    private BigDecimal descuentoValor = BigDecimal.ZERO;
 
     @Column(name = "subtotal", nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
@@ -57,15 +61,15 @@ public class DetallePedido {
     private void calcularSubtotal() {
         if (precioUnitario != null && cantidad != null && descuentoPct != null) {
             BigDecimal total = precioUnitario.multiply(BigDecimal.valueOf(cantidad));
-            BigDecimal descuento = total.multiply(BigDecimal.valueOf(descuentoPct)).divide(BigDecimal.valueOf(100));
-            subtotal = total.subtract(descuento);
+            BigDecimal descuentoPorcentaje = total.multiply(descuentoPct).divide(BigDecimal.valueOf(100));
+            subtotal = total.subtract(descuentoPorcentaje).subtract(descuentoValor != null ? descuentoValor : BigDecimal.ZERO);
         }
     }
 
     // Constructors
     public DetallePedido() {}
 
-    public DetallePedido(Pedido pedido, Lote lote, Integer cantidad, BigDecimal precioUnitario, Byte descuentoPct) {
+    public DetallePedido(Pedido pedido, Lote lote, Integer cantidad, BigDecimal precioUnitario, BigDecimal descuentoPct) {
         this.pedido = pedido;
         this.lote = lote;
         this.cantidad = cantidad;
@@ -89,8 +93,11 @@ public class DetallePedido {
     public BigDecimal getPrecioUnitario() { return precioUnitario; }
     public void setPrecioUnitario(BigDecimal precioUnitario) { this.precioUnitario = precioUnitario; }
 
-    public Byte getDescuentoPct() { return descuentoPct; }
-    public void setDescuentoPct(Byte descuentoPct) { this.descuentoPct = descuentoPct; }
+    public BigDecimal getDescuentoPct() { return descuentoPct; }
+    public void setDescuentoPct(BigDecimal descuentoPct) { this.descuentoPct = descuentoPct; }
+
+    public BigDecimal getDescuentoValor() { return descuentoValor; }
+    public void setDescuentoValor(BigDecimal descuentoValor) { this.descuentoValor = descuentoValor; }
 
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }

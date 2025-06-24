@@ -5,26 +5,65 @@ import com.atunesdelpacifico.model.dto.ApiResponse;
 import com.atunesdelpacifico.model.dto.ClienteRequest;
 import com.atunesdelpacifico.service.ClienteService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
-@RequestMapping("/cliente")
-@Tag(name = "Clientes", description = "Endpoints para gestión de clientes")
+@RequestMapping("/api/clientes")
+@Tag(name = "Clientes", description = "Gestión de clientes")
+@SecurityRequirement(name = "bearerAuth")
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class ClienteController {
 
     @Autowired
     private ClienteService clienteService;
 
-    @PostMapping("/registrar")
-    @Operation(summary = "Registrar nuevo cliente", description = "Registra un nuevo cliente con su usuario asociado")
+    @GetMapping
+    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
+    @Operation(summary = "Listar todos los clientes", description = "Obtiene la lista completa de clientes")
+    public ResponseEntity<ApiResponse<List<Cliente>>> getAllClientes() {
+        try {
+            System.out.println("=== Iniciando getAllClientes ===");
+            List<Cliente> clientes = clienteService.findAll();
+            System.out.println("=== Clientes encontrados: " + clientes.size() + " ===");
+            return ResponseEntity.ok(ApiResponse.success("Clientes obtenidos exitosamente", clientes));
+        } catch (Exception e) {
+            System.err.println("=== Error en getAllClientes: " + e.getMessage() + " ===");
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al obtener clientes: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR') or @clienteService.isOwner(#id, authentication.name)")
+    @Operation(summary = "Obtener cliente por ID", description = "Obtiene un cliente específico por su ID")
+    public ResponseEntity<ApiResponse<Cliente>> getClienteById(@PathVariable Long id) {
+        try {
+            Optional<Cliente> cliente = clienteService.findById(id);
+            if (cliente.isPresent()) {
+                return ResponseEntity.ok(ApiResponse.success("Cliente encontrado", cliente.get()));
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al obtener cliente: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/registro")
+    @CrossOrigin(origins = "*", maxAge = 3600)
+    @Operation(summary = "Registrar nuevo cliente", description = "Registra un nuevo cliente en el sistema")
     public ResponseEntity<ApiResponse<Cliente>> registrarCliente(@Valid @RequestBody ClienteRequest clienteRequest) {
         try {
             Cliente cliente = clienteService.registrarCliente(clienteRequest);
@@ -35,37 +74,10 @@ public class ClienteController {
         }
     }
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
-    @Operation(summary = "Listar todos los clientes", description = "Obtiene la lista de todos los clientes")
-    public ResponseEntity<ApiResponse<List<Cliente>>> listarClientes() {
-        try {
-            List<Cliente> clientes = clienteService.findAll();
-            return ResponseEntity.ok(ApiResponse.success("Clientes obtenidos exitosamente", clientes));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener clientes: " + e.getMessage()));
-        }
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR') or (hasRole('CLIENTE') and @clienteService.isOwner(#id, authentication.name))")
-    @Operation(summary = "Obtener cliente por ID", description = "Obtiene un cliente específico por su ID")
-    public ResponseEntity<ApiResponse<Cliente>> obtenerCliente(@PathVariable Long id) {
-        try {
-            Cliente cliente = clienteService.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
-            return ResponseEntity.ok(ApiResponse.success("Cliente obtenido exitosamente", cliente));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener cliente: " + e.getMessage()));
-        }
-    }
-
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR') or (hasRole('CLIENTE') and @clienteService.isOwner(#id, authentication.name))")
-    @Operation(summary = "Actualizar cliente", description = "Actualiza la información de un cliente")
-    public ResponseEntity<ApiResponse<Cliente>> actualizarCliente(@PathVariable Long id, @Valid @RequestBody ClienteRequest clienteRequest) {
+    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR') or @clienteService.isOwner(#id, authentication.name)")
+    @Operation(summary = "Actualizar cliente", description = "Actualiza los datos de un cliente existente")
+    public ResponseEntity<ApiResponse<Cliente>> updateCliente(@PathVariable Long id, @Valid @RequestBody ClienteRequest clienteRequest) {
         try {
             Cliente cliente = clienteService.update(id, clienteRequest);
             return ResponseEntity.ok(ApiResponse.success("Cliente actualizado exitosamente", cliente));
@@ -77,8 +89,8 @@ public class ClienteController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @Operation(summary = "Eliminar cliente", description = "Elimina un cliente del sistema")
-    public ResponseEntity<ApiResponse<String>> eliminarCliente(@PathVariable Long id) {
+    @Operation(summary = "Eliminar cliente", description = "Cambia el estado del cliente a inactivo")
+    public ResponseEntity<ApiResponse<String>> deleteCliente(@PathVariable Long id) {
         try {
             clienteService.deleteById(id);
             return ResponseEntity.ok(ApiResponse.success("Cliente eliminado exitosamente", null));
@@ -88,29 +100,72 @@ public class ClienteController {
         }
     }
 
-    @GetMapping("/activos")
+    @GetMapping("/estado/{estado}")
     @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
-    @Operation(summary = "Listar clientes activos", description = "Obtiene la lista de clientes con estado activo")
-    public ResponseEntity<ApiResponse<List<Cliente>>> listarClientesActivos() {
+    @Operation(summary = "Buscar clientes por estado", description = "Obtiene clientes filtrados por estado")
+    public ResponseEntity<ApiResponse<List<Cliente>>> getClientesByEstado(@PathVariable Cliente.EstadoCliente estado) {
         try {
-            List<Cliente> clientes = clienteService.findByEstado(Cliente.EstadoCliente.ACTIVO);
-            return ResponseEntity.ok(ApiResponse.success("Clientes activos obtenidos exitosamente", clientes));
+            List<Cliente> clientes = clienteService.findByEstado(estado);
+            return ResponseEntity.ok(ApiResponse.success("Clientes obtenidos exitosamente", clientes));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener clientes activos: " + e.getMessage()));
+                    .body(ApiResponse.error("Error al obtener clientes: " + e.getMessage()));
         }
     }
 
     @GetMapping("/tipo/{tipo}")
     @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
-    @Operation(summary = "Listar clientes por tipo", description = "Obtiene la lista de clientes por tipo")
-    public ResponseEntity<ApiResponse<List<Cliente>>> listarClientesPorTipo(@PathVariable Cliente.TipoCliente tipo) {
+    @Operation(summary = "Buscar clientes por tipo", description = "Obtiene clientes filtrados por tipo")
+    public ResponseEntity<ApiResponse<List<Cliente>>> getClientesByTipo(@PathVariable Cliente.TipoCliente tipo) {
         try {
             List<Cliente> clientes = clienteService.findByTipoCliente(tipo);
-            return ResponseEntity.ok(ApiResponse.success("Clientes por tipo obtenidos exitosamente", clientes));
+            return ResponseEntity.ok(ApiResponse.success("Clientes obtenidos exitosamente", clientes));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener clientes por tipo: " + e.getMessage()));
+                    .body(ApiResponse.error("Error al obtener clientes: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/buscar")
+    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
+    @Operation(summary = "Buscar clientes por nombre", description = "Busca clientes que contengan el texto en su nombre")
+    public ResponseEntity<ApiResponse<List<Cliente>>> buscarClientesPorNombre(@RequestParam String nombre) {
+        try {
+            List<Cliente> clientes = clienteService.buscarPorNombre(nombre);
+            return ResponseEntity.ok(ApiResponse.success("Búsqueda completada", clientes));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error en la búsqueda: " + e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/{id}/estado")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @Operation(summary = "Cambiar estado del cliente", description = "Cambia el estado de un cliente")
+    public ResponseEntity<ApiResponse<Cliente>> cambiarEstadoCliente(@PathVariable Long id, @RequestParam Cliente.EstadoCliente estado) {
+        try {
+            Cliente cliente = clienteService.cambiarEstado(id, estado);
+            return ResponseEntity.ok(ApiResponse.success("Estado del cliente actualizado", cliente));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al cambiar estado: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/perfil")
+    @PreAuthorize("hasRole('CLIENTE')")
+    @Operation(summary = "Obtener perfil del cliente autenticado", description = "Obtiene el perfil del cliente que está autenticado")
+    public ResponseEntity<ApiResponse<Cliente>> getPerfilCliente(Authentication authentication) {
+        try {
+            Optional<Cliente> cliente = clienteService.findByUsuarioNombre(authentication.getName());
+            if (cliente.isPresent()) {
+                return ResponseEntity.ok(ApiResponse.success("Perfil obtenido", cliente.get()));
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error al obtener perfil: " + e.getMessage()));
         }
     }
 }
