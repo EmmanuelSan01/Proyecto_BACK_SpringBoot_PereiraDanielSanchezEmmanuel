@@ -1,6 +1,5 @@
 package com.atunesdelpacifico.model.dto;
 
-import com.atunesdelpacifico.entity.Cliente;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -20,8 +19,8 @@ public class ClienteRequest {
     @Email(message = "El correo debe tener un formato válido")
     private String correo;
 
-    @NotNull(message = "El tipo de cliente es obligatorio")
-    private Cliente.TipoCliente tipo;
+    @NotBlank(message = "El tipo es obligatorio")
+    private String tipo; // "PERSONA_NATURAL" o "EMPRESA"
 
     @NotBlank(message = "El nombre es obligatorio")
     @Size(max = 150, message = "El nombre no puede exceder 150 caracteres")
@@ -50,8 +49,8 @@ public class ClienteRequest {
     public String getCorreo() { return correo; }
     public void setCorreo(String correo) { this.correo = correo; }
 
-    public Cliente.TipoCliente getTipo() { return tipo; }
-    public void setTipo(Cliente.TipoCliente tipo) { this.tipo = tipo; }
+    public String getTipo() { return tipo; }
+    public void setTipo(String tipo) { this.tipo = tipo; }
 
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }

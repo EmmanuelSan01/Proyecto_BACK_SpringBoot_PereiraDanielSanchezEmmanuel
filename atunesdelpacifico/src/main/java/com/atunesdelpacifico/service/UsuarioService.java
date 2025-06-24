@@ -27,96 +27,157 @@ public class UsuarioService {
     private PasswordEncoder passwordEncoder;
 
     public List<Usuario> findAll() {
-        return usuarioRepository.findAll();
+        try {
+            System.out.println("=== UsuarioService.findAll() iniciado ===");
+            List<Usuario> usuarios = usuarioRepository.findAll();
+            System.out.println("=== Usuarios encontrados: " + usuarios.size() + " ===");
+
+            // Log de cada usuario para debug
+            for (Usuario usuario : usuarios) {
+                System.out.println("Usuario: " + usuario.getNombreUsuario() +
+                        ", Rol: " + (usuario.getRol() != null ? usuario.getRol().getNombre() : "NULL"));
+            }
+
+            return usuarios;
+        } catch (Exception e) {
+            System.err.println("=== Error en UsuarioService.findAll(): " + e.getMessage() + " ===");
+            e.printStackTrace();
+            throw new RuntimeException("Error al obtener usuarios: " + e.getMessage(), e);
+        }
     }
 
     public Optional<Usuario> findById(Long id) {
-        return usuarioRepository.findById(id);
+        try {
+            return usuarioRepository.findById(id);
+        } catch (Exception e) {
+            System.err.println("Error al buscar usuario por ID " + id + ": " + e.getMessage());
+            throw new RuntimeException("Error al buscar usuario: " + e.getMessage(), e);
+        }
     }
 
     public Optional<Usuario> findByNombreUsuario(String nombreUsuario) {
-        return usuarioRepository.findByNombreUsuario(nombreUsuario);
+        try {
+            return usuarioRepository.findByNombreUsuario(nombreUsuario);
+        } catch (Exception e) {
+            System.err.println("Error al buscar usuario por nombre: " + e.getMessage());
+            throw new RuntimeException("Error al buscar usuario: " + e.getMessage(), e);
+        }
     }
 
     public Optional<Usuario> findByCorreo(String correo) {
-        return usuarioRepository.findByCorreo(correo);
+        try {
+            return usuarioRepository.findByCorreo(correo);
+        } catch (Exception e) {
+            System.err.println("Error al buscar usuario por correo: " + e.getMessage());
+            throw new RuntimeException("Error al buscar usuario: " + e.getMessage(), e);
+        }
     }
 
     public List<Usuario> findByRol(String rolNombre) {
-        return usuarioRepository.findByRolNombre(rolNombre);
+        try {
+            return usuarioRepository.findByRolNombre(rolNombre);
+        } catch (Exception e) {
+            System.err.println("Error al buscar usuarios por rol: " + e.getMessage());
+            throw new RuntimeException("Error al buscar usuarios por rol: " + e.getMessage(), e);
+        }
     }
 
     public Usuario save(UsuarioRequest usuarioRequest) {
-        // Verificar que no exista el usuario o correo
-        if (usuarioRepository.existsByNombreUsuario(usuarioRequest.getNombreUsuario())) {
-            throw new RuntimeException("El nombre de usuario ya existe");
-        }
-        if (usuarioRepository.existsByCorreo(usuarioRequest.getCorreo())) {
-            throw new RuntimeException("El correo ya está registrado");
-        }
-
-        // Obtener el rol
-        Rol rol = rolRepository.findById(usuarioRequest.getRolId())
-                .orElseThrow(() -> new RuntimeException("Rol no encontrado"));
-
-        Usuario usuario = new Usuario();
-        usuario.setNombreUsuario(usuarioRequest.getNombreUsuario());
-        usuario.setContrasena(passwordEncoder.encode(usuarioRequest.getContrasena()));
-        usuario.setCorreo(usuarioRequest.getCorreo());
-        usuario.setRol(rol);
-        usuario.setActivo(usuarioRequest.getActivo() != null ? usuarioRequest.getActivo() : true);
-
-        return usuarioRepository.save(usuario);
-    }
-
-    public Usuario update(Long id, UsuarioRequest usuarioRequest) {
-        Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        // Verificar nombre de usuario si cambió
-        if (!usuario.getNombreUsuario().equals(usuarioRequest.getNombreUsuario())) {
+        try {
+            // Verificar que no exista el usuario o correo
             if (usuarioRepository.existsByNombreUsuario(usuarioRequest.getNombreUsuario())) {
                 throw new RuntimeException("El nombre de usuario ya existe");
             }
-            usuario.setNombreUsuario(usuarioRequest.getNombreUsuario());
-        }
-
-        // Verificar correo si cambió
-        if (!usuario.getCorreo().equals(usuarioRequest.getCorreo())) {
             if (usuarioRepository.existsByCorreo(usuarioRequest.getCorreo())) {
                 throw new RuntimeException("El correo ya está registrado");
             }
-            usuario.setCorreo(usuarioRequest.getCorreo());
-        }
 
-        // Actualizar contraseña si se proporciona
-        if (usuarioRequest.getContrasena() != null && !usuarioRequest.getContrasena().isEmpty()) {
+            // Obtener el rol
+            Rol rol = rolRepository.findById(usuarioRequest.getRolId())
+                    .orElseThrow(() -> new RuntimeException("Rol no encontrado"));
+
+            Usuario usuario = new Usuario();
+            usuario.setNombreUsuario(usuarioRequest.getNombreUsuario());
             usuario.setContrasena(passwordEncoder.encode(usuarioRequest.getContrasena()));
+            usuario.setCorreo(usuarioRequest.getCorreo());
+            usuario.setRol(rol);
+            usuario.setActivo(usuarioRequest.getActivo() != null ? usuarioRequest.getActivo() : true);
+
+            return usuarioRepository.save(usuario);
+        } catch (Exception e) {
+            System.err.println("Error al crear usuario: " + e.getMessage());
+            throw new RuntimeException("Error al crear usuario: " + e.getMessage(), e);
         }
+    }
 
-        // Actualizar rol
-        Rol rol = rolRepository.findById(usuarioRequest.getRolId())
-                .orElseThrow(() -> new RuntimeException("Rol no encontrado"));
-        usuario.setRol(rol);
-        usuario.setActivo(usuarioRequest.getActivo() != null ? usuarioRequest.getActivo() : true);
+    public Usuario update(Long id, UsuarioRequest usuarioRequest) {
+        try {
+            Usuario usuario = usuarioRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        return usuarioRepository.save(usuario);
+            // Verificar nombre de usuario si cambió
+            if (!usuario.getNombreUsuario().equals(usuarioRequest.getNombreUsuario())) {
+                if (usuarioRepository.existsByNombreUsuario(usuarioRequest.getNombreUsuario())) {
+                    throw new RuntimeException("El nombre de usuario ya existe");
+                }
+                usuario.setNombreUsuario(usuarioRequest.getNombreUsuario());
+            }
+
+            // Verificar correo si cambió
+            if (!usuario.getCorreo().equals(usuarioRequest.getCorreo())) {
+                if (usuarioRepository.existsByCorreo(usuarioRequest.getCorreo())) {
+                    throw new RuntimeException("El correo ya está registrado");
+                }
+                usuario.setCorreo(usuarioRequest.getCorreo());
+            }
+
+            // Actualizar contraseña si se proporciona
+            if (usuarioRequest.getContrasena() != null && !usuarioRequest.getContrasena().isEmpty()) {
+                usuario.setContrasena(passwordEncoder.encode(usuarioRequest.getContrasena()));
+            }
+
+            // Actualizar rol
+            Rol rol = rolRepository.findById(usuarioRequest.getRolId())
+                    .orElseThrow(() -> new RuntimeException("Rol no encontrado"));
+            usuario.setRol(rol);
+            usuario.setActivo(usuarioRequest.getActivo() != null ? usuarioRequest.getActivo() : true);
+
+            return usuarioRepository.save(usuario);
+        } catch (Exception e) {
+            System.err.println("Error al actualizar usuario: " + e.getMessage());
+            throw new RuntimeException("Error al actualizar usuario: " + e.getMessage(), e);
+        }
     }
 
     public void deleteById(Long id) {
-        Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        try {
+            Usuario usuario = usuarioRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Cambiar estado a inactivo en lugar de eliminar
-        usuario.setActivo(false);
-        usuarioRepository.save(usuario);
+            // Cambiar estado a inactivo en lugar de eliminar
+            usuario.setActivo(false);
+            usuarioRepository.save(usuario);
+        } catch (Exception e) {
+            System.err.println("Error al eliminar usuario: " + e.getMessage());
+            throw new RuntimeException("Error al eliminar usuario: " + e.getMessage(), e);
+        }
     }
 
     public boolean existsByNombreUsuario(String nombreUsuario) {
-        return usuarioRepository.existsByNombreUsuario(nombreUsuario);
+        try {
+            return usuarioRepository.existsByNombreUsuario(nombreUsuario);
+        } catch (Exception e) {
+            System.err.println("Error al verificar existencia de usuario: " + e.getMessage());
+            return false;
+        }
     }
 
     public boolean existsByCorreo(String correo) {
-        return usuarioRepository.existsByCorreo(correo);
+        try {
+            return usuarioRepository.existsByCorreo(correo);
+        } catch (Exception e) {
+            System.err.println("Error al verificar existencia de correo: " + e.getMessage());
+            return false;
+        }
     }
 }

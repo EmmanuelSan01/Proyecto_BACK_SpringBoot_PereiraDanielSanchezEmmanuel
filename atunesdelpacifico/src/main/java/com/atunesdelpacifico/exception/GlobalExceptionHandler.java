@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.HashMap;
 import java.util.Map;
+import jakarta.persistence.PersistenceException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -45,6 +46,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<String>> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.error("Acceso denegado"));
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+    public ResponseEntity<ApiResponse<String>> handleDataAccessException(
+            org.springframework.dao.DataAccessException ex) {
+        System.err.println("Error de acceso a datos: " + ex.getMessage());
+        ex.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Error de base de datos: " + ex.getMessage()));
+    }
+
+    @ExceptionHandler(jakarta.persistence.PersistenceException.class)
+    public ResponseEntity<ApiResponse<String>> handlePersistenceException(
+            jakarta.persistence.PersistenceException ex) {
+        System.err.println("Error de persistencia: " + ex.getMessage());
+        ex.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Error de persistencia: " + ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

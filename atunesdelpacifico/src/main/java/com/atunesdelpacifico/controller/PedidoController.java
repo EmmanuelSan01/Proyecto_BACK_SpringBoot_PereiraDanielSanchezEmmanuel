@@ -3,6 +3,7 @@ package com.atunesdelpacifico.controller;
 import com.atunesdelpacifico.entity.Pedido;
 import com.atunesdelpacifico.model.dto.ApiResponse;
 import com.atunesdelpacifico.model.dto.PedidoRequest;
+import com.atunesdelpacifico.model.dto.PedidoResponse;
 import com.atunesdelpacifico.service.PedidoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -17,10 +18,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/pedidos")
+@RequestMapping("/pedidos")
 @Tag(name = "Pedidos", description = "Gestión de pedidos")
 @SecurityRequirement(name = "bearerAuth")
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -32,11 +34,12 @@ public class PedidoController {
     @GetMapping
     @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
     @Operation(summary = "Listar todos los pedidos", description = "Obtiene la lista completa de pedidos")
-    public ResponseEntity<ApiResponse<List<Pedido>>> getAllPedidos() {
+    public ResponseEntity<ApiResponse<List<PedidoResponse>>> getAllPedidos() {
         try {
-            List<Pedido> pedidos = pedidoService.findAll();
+            List<PedidoResponse> pedidos = pedidoService.findAllAsResponse();
             return ResponseEntity.ok(ApiResponse.success("Pedidos obtenidos exitosamente", pedidos));
         } catch (Exception e) {
+            System.err.println("Error en getAllPedidos: " + e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al obtener pedidos: " + e.getMessage()));
         }
@@ -45,9 +48,9 @@ public class PedidoController {
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR') or @pedidoService.isOwner(#id, authentication.name)")
     @Operation(summary = "Obtener pedido por ID", description = "Obtiene un pedido específico por su ID")
-    public ResponseEntity<ApiResponse<Pedido>> getPedidoById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PedidoResponse>> getPedidoById(@PathVariable Long id) {
         try {
-            Optional<Pedido> pedido = pedidoService.findById(id);
+            Optional<PedidoResponse> pedido = pedidoService.findByIdAsResponse(id);
             if (pedido.isPresent()) {
                 return ResponseEntity.ok(ApiResponse.success("Pedido encontrado", pedido.get()));
             } else {
@@ -62,103 +65,61 @@ public class PedidoController {
     @PostMapping
     @PreAuthorize("hasRole('CLIENTE') or hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
     @Operation(summary = "Crear nuevo pedido", description = "Crea un nuevo pedido")
-    public ResponseEntity<ApiResponse<Pedido>> createPedido(@Valid @RequestBody PedidoRequest pedidoRequest, Authentication authentication) {
+    public ResponseEntity<ApiResponse<PedidoResponse>> createPedido(@Valid @RequestBody PedidoRequest pedidoRequest, Authentication authentication) {
         try {
+            System.out.println("=== CREAR PEDIDO ===");
+            System.out.println("Usuario: " + authentication.getName());
+            System.out.println("Detalles: " + pedidoRequest.getDetalles().size());
+
             Pedido pedido = pedidoService.crearPedido(pedidoRequest, authentication.getName());
-            return ResponseEntity.ok(ApiResponse.success("Pedido creado exitosamente", pedido));
+            PedidoResponse response = pedidoService.convertToResponse(pedido);
+
+            System.out.println("Pedido creado: " + response.getNumeroPedido());
+
+            return ResponseEntity.ok(ApiResponse.success("Pedido creado exitosamente", response));
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
+            System.err.println("Error al crear pedido: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500)
                     .body(ApiResponse.error("Error al crear pedido: " + e.getMessage()));
-        }
-    }
-
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
-    @Operation(summary = "Actualizar pedido", description = "Actualiza los datos de un pedido existente")
-    public ResponseEntity<ApiResponse<Pedido>> updatePedido(@PathVariable Long id, @Valid @RequestBody PedidoRequest pedidoRequest) {
-        try {
-            Pedido pedido = pedidoService.update(id, pedidoRequest);
-            return ResponseEntity.ok(ApiResponse.success("Pedido actualizado exitosamente", pedido));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al actualizar pedido: " + e.getMessage()));
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    @Operation(summary = "Eliminar pedido", description = "Elimina un pedido del sistema")
-    public ResponseEntity<ApiResponse<String>> deletePedido(@PathVariable Long id) {
-        try {
-            pedidoService.deleteById(id);
-            return ResponseEntity.ok(ApiResponse.success("Pedido eliminado exitosamente", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al eliminar pedido: " + e.getMessage()));
-        }
-    }
-
-    @GetMapping("/cliente/{clienteId}")
-    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR') or @pedidoService.isClienteOwner(#clienteId, authentication.name)")
-    @Operation(summary = "Obtener pedidos por cliente", description = "Obtiene todos los pedidos de un cliente específico")
-    public ResponseEntity<ApiResponse<List<Pedido>>> getPedidosByCliente(@PathVariable Long clienteId) {
-        try {
-            List<Pedido> pedidos = pedidoService.findByClienteId(clienteId);
-            return ResponseEntity.ok(ApiResponse.success("Pedidos del cliente obtenidos", pedidos));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener pedidos: " + e.getMessage()));
         }
     }
 
     @GetMapping("/mis-pedidos")
     @PreAuthorize("hasRole('CLIENTE')")
     @Operation(summary = "Obtener pedidos del cliente autenticado", description = "Obtiene todos los pedidos del cliente que está autenticado")
-    public ResponseEntity<ApiResponse<List<Pedido>>> getMisPedidos(Authentication authentication) {
+    public ResponseEntity<ApiResponse<List<PedidoResponse>>> getMisPedidos(Authentication authentication) {
         try {
-            List<Pedido> pedidos = pedidoService.findByUsuarioNombre(authentication.getName());
+            System.out.println("=== OBTENIENDO MIS PEDIDOS ===");
+            System.out.println("Usuario: " + authentication.getName());
+
+            List<PedidoResponse> pedidos = pedidoService.findByUsuarioNombreAsResponse(authentication.getName());
+
+            System.out.println("Pedidos encontrados: " + pedidos.size());
+            for (PedidoResponse pedido : pedidos) {
+                System.out.println("Pedido: " + pedido.getNumeroPedido() + " - Detalles: " +
+                        (pedido.getDetalles() != null ? pedido.getDetalles().size() : 0));
+            }
+
             return ResponseEntity.ok(ApiResponse.success("Mis pedidos obtenidos", pedidos));
         } catch (Exception e) {
+            System.err.println("Error al obtener mis pedidos: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al obtener pedidos: " + e.getMessage()));
         }
     }
 
-    @GetMapping("/estado/{estado}")
-    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
-    @Operation(summary = "Buscar pedidos por estado", description = "Obtiene pedidos filtrados por estado")
-    public ResponseEntity<ApiResponse<List<Pedido>>> getPedidosByEstado(@PathVariable Pedido.EstadoPedido estado) {
-        try {
-            List<Pedido> pedidos = pedidoService.findByEstado(estado);
-            return ResponseEntity.ok(ApiResponse.success("Pedidos obtenidos exitosamente", pedidos));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener pedidos: " + e.getMessage()));
-        }
-    }
-
-    @GetMapping("/fecha")
-    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
-    @Operation(summary = "Buscar pedidos por fecha", description = "Obtiene pedidos en un rango de fechas")
-    public ResponseEntity<ApiResponse<List<Pedido>>> getPedidosByFecha(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin) {
-        try {
-            List<Pedido> pedidos = pedidoService.findByFechaPedido(fechaInicio, fechaFin);
-            return ResponseEntity.ok(ApiResponse.success("Pedidos obtenidos exitosamente", pedidos));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener pedidos: " + e.getMessage()));
-        }
-    }
-
-    @PatchMapping("/{id}/estado")
+    @PutMapping("/{id}/estado")
     @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
     @Operation(summary = "Cambiar estado del pedido", description = "Cambia el estado de un pedido")
-    public ResponseEntity<ApiResponse<Pedido>> cambiarEstadoPedido(@PathVariable Long id, @RequestParam Pedido.EstadoPedido estado) {
+    public ResponseEntity<ApiResponse<PedidoResponse>> cambiarEstadoPedido(@PathVariable Long id, @RequestBody Map<String, String> request) {
         try {
-            Pedido pedido = pedidoService.cambiarEstado(id, estado);
-            return ResponseEntity.ok(ApiResponse.success("Estado del pedido actualizado", pedido));
+            String estadoStr = request.get("estado");
+            Pedido.EstadoPedido nuevoEstado = Pedido.EstadoPedido.valueOf(estadoStr);
+            Pedido pedido = pedidoService.cambiarEstado(id, nuevoEstado);
+            PedidoResponse response = pedidoService.convertToResponse(pedido);
+            return ResponseEntity.ok(ApiResponse.success("Estado cambiado exitosamente", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al cambiar estado: " + e.getMessage()));
@@ -168,10 +129,11 @@ public class PedidoController {
     @PostMapping("/{id}/confirmar")
     @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
     @Operation(summary = "Confirmar pedido", description = "Confirma un pedido y actualiza el inventario")
-    public ResponseEntity<ApiResponse<Pedido>> confirmarPedido(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PedidoResponse>> confirmarPedido(@PathVariable Long id) {
         try {
             Pedido pedido = pedidoService.confirmarPedido(id);
-            return ResponseEntity.ok(ApiResponse.success("Pedido confirmado exitosamente", pedido));
+            PedidoResponse response = pedidoService.convertToResponse(pedido);
+            return ResponseEntity.ok(ApiResponse.success("Pedido confirmado exitosamente", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al confirmar pedido: " + e.getMessage()));
@@ -181,10 +143,11 @@ public class PedidoController {
     @PostMapping("/{id}/cancelar")
     @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR') or @pedidoService.isOwner(#id, authentication.name)")
     @Operation(summary = "Cancelar pedido", description = "Cancela un pedido y restaura el inventario")
-    public ResponseEntity<ApiResponse<Pedido>> cancelarPedido(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PedidoResponse>> cancelarPedido(@PathVariable Long id) {
         try {
             Pedido pedido = pedidoService.cancelarPedido(id);
-            return ResponseEntity.ok(ApiResponse.success("Pedido cancelado exitosamente", pedido));
+            PedidoResponse response = pedidoService.convertToResponse(pedido);
+            return ResponseEntity.ok(ApiResponse.success("Pedido cancelado exitosamente", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al cancelar pedido: " + e.getMessage()));

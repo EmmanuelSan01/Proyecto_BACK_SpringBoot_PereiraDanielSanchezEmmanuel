@@ -31,9 +31,13 @@ public class UsuarioController {
     @Operation(summary = "Listar todos los usuarios", description = "Obtiene la lista completa de usuarios")
     public ResponseEntity<ApiResponse<List<Usuario>>> getAllUsuarios() {
         try {
+            System.out.println("=== Iniciando getAllUsuarios ===");
             List<Usuario> usuarios = usuarioService.findAll();
+            System.out.println("=== Usuarios encontrados: " + usuarios.size() + " ===");
             return ResponseEntity.ok(ApiResponse.success("Usuarios obtenidos exitosamente", usuarios));
         } catch (Exception e) {
+            System.err.println("=== Error en getAllUsuarios: " + e.getMessage() + " ===");
+            e.printStackTrace();
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al obtener usuarios: " + e.getMessage()));
         }

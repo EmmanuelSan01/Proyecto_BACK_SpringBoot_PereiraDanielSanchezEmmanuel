@@ -32,9 +32,13 @@ public class ClienteController {
     @Operation(summary = "Listar todos los clientes", description = "Obtiene la lista completa de clientes")
     public ResponseEntity<ApiResponse<List<Cliente>>> getAllClientes() {
         try {
+            System.out.println("=== Iniciando getAllClientes ===");
             List<Cliente> clientes = clienteService.findAll();
+            System.out.println("=== Clientes encontrados: " + clientes.size() + " ===");
             return ResponseEntity.ok(ApiResponse.success("Clientes obtenidos exitosamente", clientes));
         } catch (Exception e) {
+            System.err.println("=== Error en getAllClientes: " + e.getMessage() + " ===");
+            e.printStackTrace();
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error al obtener clientes: " + e.getMessage()));
         }

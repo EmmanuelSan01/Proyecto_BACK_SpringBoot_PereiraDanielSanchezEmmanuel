@@ -1,6 +1,6 @@
 package com.atunesdelpacifico.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
@@ -21,9 +21,9 @@ public class Lote {
     private String codigoLote;
 
     // IMPORTANTE: Usar @JsonBackReference para evitar ciclos infinitos
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producto_id", nullable = false)
-    @JsonBackReference
     private Producto producto;
 
     @NotNull(message = "La fecha de producción es obligatoria")

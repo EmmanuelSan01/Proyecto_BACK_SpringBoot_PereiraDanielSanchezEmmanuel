@@ -10,18 +10,17 @@ public class DetallePedidoRequest {
     @NotNull(message = "El ID del lote es obligatorio")
     private Long loteId;
 
-    @NotNull(message = "La cantidad es obligatoria")
     @Min(value = 1, message = "La cantidad debe ser mayor a 0")
     private Integer cantidad;
 
     @NotNull(message = "El precio unitario es obligatorio")
-    @DecimalMin(value = "0.01", message = "El precio unitario debe ser mayor a 0")
+    @DecimalMin(value = "0.0", inclusive = false, message = "El precio debe ser mayor a 0")
     private BigDecimal precioUnitario;
 
-    @DecimalMin(value = "0.00", message = "El descuento porcentual no puede ser negativo")
+    @DecimalMin(value = "0.0", message = "El porcentaje de descuento no puede ser negativo")
     private BigDecimal descuentoPct = BigDecimal.ZERO;
 
-    @DecimalMin(value = "0.00", message = "El descuento en valor no puede ser negativo")
+    @DecimalMin(value = "0.0", message = "El valor de descuento no puede ser negativo")
     private BigDecimal descuentoValor = BigDecimal.ZERO;
 
     // Constructors
@@ -48,4 +47,5 @@ public class DetallePedidoRequest {
 
     public BigDecimal getDescuentoValor() { return descuentoValor; }
     public void setDescuentoValor(BigDecimal descuentoValor) { this.descuentoValor = descuentoValor; }
+
 }

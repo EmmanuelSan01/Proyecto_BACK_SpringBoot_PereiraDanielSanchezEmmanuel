@@ -65,6 +65,9 @@ public class Pedido {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "ultima_actualizacion_automatica")
+    private LocalDateTime ultimaActualizacionAutomatica;
+
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<DetallePedido> detalles;
 
@@ -174,4 +177,7 @@ public class Pedido {
 
     public List<DetallePedido> getDetalles() { return detalles; }
     public void setDetalles(List<DetallePedido> detalles) { this.detalles = detalles; }
+
+    public LocalDateTime getUltimaActualizacionAutomatica() { return ultimaActualizacionAutomatica; }
+    public void setUltimaActualizacionAutomatica(LocalDateTime ultimaActualizacionAutomatica) { this.ultimaActualizacionAutomatica = ultimaActualizacionAutomatica; }
 }

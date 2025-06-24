@@ -1,6 +1,7 @@
 package com.atunesdelpacifico.controller;
 
 import com.atunesdelpacifico.model.dto.ApiResponse;
+import com.atunesdelpacifico.model.dto.DashboardStatsDTO;
 import com.atunesdelpacifico.service.ReporteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -15,7 +16,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/reportes")
+@RequestMapping("/reportes")
 @Tag(name = "Reportes", description = "Generación de reportes y estadísticas")
 @SecurityRequirement(name = "bearerAuth")
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -85,13 +86,34 @@ public class ReporteController {
     @GetMapping("/dashboard")
     @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
     @Operation(summary = "Estadísticas del dashboard", description = "Obtiene estadísticas generales para el dashboard")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboardStats() {
+    public ResponseEntity<ApiResponse<DashboardStatsDTO>> getDashboardStats() {
         try {
-            Map<String, Object> stats = reporteService.getDashboardStats();
+            System.out.println("=== Iniciando getDashboardStats ===");
+            DashboardStatsDTO stats = reporteService.getDashboardStats();
+            System.out.println("=== Stats generadas exitosamente ===");
             return ResponseEntity.ok(ApiResponse.success("Estadísticas obtenidas exitosamente", stats));
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
+            System.err.println("=== Error en getDashboardStats: " + e.getMessage() + " ===");
+            e.printStackTrace();
+            return ResponseEntity.status(500)
                     .body(ApiResponse.error("Error al obtener estadísticas: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/notificaciones")
+    @PreAuthorize("hasRole('ADMINISTRADOR') or hasRole('OPERADOR')")
+    @Operation(summary = "Obtener notificaciones del sistema", description = "Obtiene notificaciones sobre el estado del sistema")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getNotificaciones() {
+        try {
+            System.out.println("=== Iniciando getNotificaciones ===");
+            Map<String, Object> notificaciones = reporteService.getNotificaciones();
+            System.out.println("=== Notificaciones generadas exitosamente ===");
+            return ResponseEntity.ok(ApiResponse.success("Notificaciones obtenidas exitosamente", notificaciones));
+        } catch (Exception e) {
+            System.err.println("=== Error en getNotificaciones: " + e.getMessage() + " ===");
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Error al obtener notificaciones: " + e.getMessage()));
         }
     }
 }
